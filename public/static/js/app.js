@@ -57,6 +57,85 @@ document.addEventListener('DOMContentLoaded', () => {
     return Boolean(window.JoynessFirestore && window.JoynessFirestore.isReady());
   }
 
+  function isStaticHost() {
+    const h = (window.location && window.location.hostname) ? window.location.hostname : '';
+    return Boolean(
+      h.includes('netlify.app') ||
+      h.includes('web.app') ||
+      h.includes('firebaseapp.com') ||
+      h.includes('github.io') ||
+      (window.location && window.location.protocol === 'file:')
+    );
+  }
+
+  async function resolveImageClientSide(title, cat) {
+    if (!title) return '';
+    try {
+      const q = title.toLowerCase().trim();
+      const localMaps = {
+        'frieren': '/static/img/covers/frieren.jpg',
+        'jujutsu': '/static/img/covers/jujutsu_kaisen.jpg',
+        'jjk': '/static/img/covers/jujutsu_kaisen.jpg',
+        'one piece': '/static/img/covers/one_piece.jpg',
+        'dune': '/static/img/covers/dune_two.jpg',
+        'spirited': '/static/img/covers/spirited_away.jpg',
+        'interstellar': '/static/img/covers/interstellar.jpg',
+        'shogun': '/static/img/covers/shogun.jpg',
+        'breaking bad': '/static/img/covers/breaking_bad.jpg',
+        'solo leveling': '/static/img/covers/solo_leveling.jpg',
+        'stranger': '/static/img/covers/stranger_things.jpg',
+        'last of us': '/static/img/covers/the_last_of_us.jpg',
+        'severance': '/static/img/covers/severance.jpg',
+        'toriko': '/static/img/covers/frieren.jpg'
+      };
+      for (const [key, path] of Object.entries(localMaps)) {
+        if (q.includes(key)) return path;
+      }
+
+      // 1. Anime open API (Jikan)
+      if (cat === 'anime' || !cat) {
+        const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.data && data.data.length > 0 && data.data[0].images && data.data[0].images.jpg) {
+            return data.data[0].images.jpg.large_image_url || data.data[0].images.jpg.image_url;
+          }
+        }
+      }
+
+      // 2. TV / Series / Movie open API (TVMaze)
+      const tvRes = await fetch(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(title)}`);
+      if (tvRes.ok) {
+        const data = await tvRes.json();
+        if (data && data.image && (data.image.original || data.image.medium)) {
+          return data.image.original || data.image.medium;
+        }
+      }
+    } catch (e) {
+      console.warn('Client-side artwork match error:', e);
+    }
+    return '';
+  }
+
+  function resolveCardInfoClientSide(name, game) {
+    if (!name) return null;
+    const q = name.toLowerCase().trim();
+    const defaults = {
+      'aerial': { image_url: '/static/img/cards/gundam_aerial.jpg', set_name: 'Witch from Mercury Vol. 2', card_number: 'GD-001', price_usd: 85.00, price_jpy: 12800, source: 'Yuyu-tei' },
+      'rx-78': { image_url: '/static/img/cards/rx78_gundam.jpg', set_name: 'Mobile Suit Gundam Base Set', card_number: 'GD-078', price_usd: 120.00, price_jpy: 18000, source: 'Yuyu-tei' },
+      'barbatos': { image_url: '/static/img/cards/gundam_aerial.jpg', set_name: 'Iron-Blooded Orphans Climax', card_number: 'GD-045', price_usd: 145.00, price_jpy: 22000, source: 'Yuyu-tei' },
+      'luffy': { image_url: '/static/img/cards/luffy_gear5.jpg', set_name: 'Awakening of the New Era (OP-05)', card_number: 'OP05-119', price_usd: 420.00, price_jpy: 63000, source: 'Collectr' },
+      'zoro': { image_url: '/static/img/cards/zoro_alt.jpg', set_name: 'Romance Dawn (OP-01)', card_number: 'OP01-001', price_usd: 88.00, price_jpy: 13200, source: 'Collectr' },
+      'pikachu': { image_url: '/static/img/cards/pikachu_vangogh.jpg', set_name: 'Van Gogh Museum Promo', card_number: 'SVP-085', price_usd: 195.00, price_jpy: 29500, source: 'Collectr' },
+      'dark magician': { image_url: '/static/img/cards/dark_magician_girl.jpg', set_name: "Magician's Force", card_number: 'MFC-000', price_usd: 350.00, price_jpy: 52500, source: 'Collectr' },
+      'one ring': { image_url: '/static/img/cards/the_one_ring.jpg', set_name: 'Lord of the Rings: Tales of Middle-earth', card_number: 'LTR-001', price_usd: 2000000.00, price_jpy: 300000000, source: 'Collectr' }
+    };
+    for (const [key, val] of Object.entries(defaults)) {
+      if (q.includes(key)) return val;
+    }
+    return null;
+  }
+
   function exportFirestoreWatchlistCsv() {
     const items = state.watchlist.items;
     const header = ['Title', 'Category', 'Status', 'Current Episode', 'Total Episodes', 'Rating', 'Website', 'Notes'];
@@ -516,6 +595,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      // Guest / Offline fallback for static hosts (Netlify / GitHub Pages)
+      if (isStaticHost() && window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getWatchlistItems({
+          category: state.watchlist.category,
+          status: state.watchlist.status,
+          search: state.watchlist.search,
+          sort: state.watchlist.sort,
+          order: state.watchlist.order
+        });
+        if (data.success) {
+          state.watchlist.items = data.items;
+          renderWatchlistItems();
+          return;
+        }
+      }
+
       const params = new URLSearchParams();
       if (state.watchlist.category === 'favorite') {
         params.append('favorites', '1');
@@ -535,14 +630,46 @@ document.addEventListener('DOMContentLoaded', () => {
       params.append('order', state.watchlist.order);
 
       const res = await apiFetch(`/api/items?${params.toString()}`);
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          state.watchlist.items = data.items;
+          renderWatchlistItems();
+          return;
+        }
+      }
 
-      if (data.success) {
-        state.watchlist.items = data.items;
-        renderWatchlistItems();
+      // If backend 404s, use JoynessGuestStore
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getWatchlistItems({
+          category: state.watchlist.category,
+          status: state.watchlist.status,
+          search: state.watchlist.search,
+          sort: state.watchlist.sort,
+          order: state.watchlist.order
+        });
+        if (data.success) {
+          state.watchlist.items = data.items;
+          renderWatchlistItems();
+          return;
+        }
       }
     } catch (err) {
-      console.error(err);
+      console.warn('API error, falling back to local store:', err);
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getWatchlistItems({
+          category: state.watchlist.category,
+          status: state.watchlist.status,
+          search: state.watchlist.search,
+          sort: state.watchlist.sort,
+          order: state.watchlist.order
+        });
+        if (data.success) {
+          state.watchlist.items = data.items;
+          renderWatchlistItems();
+          return;
+        }
+      }
       showToast('Failed to load watchlist items', 'error');
     }
   }
@@ -553,45 +680,59 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentUser = window.JoynessAuth.getCurrentUser();
         const data = await window.JoynessFirestore.getWatchlistStats(currentUser.uid);
         if (data.success) {
-          const s = data.stats;
-          document.getElementById('statTotal').textContent = s.total;
-          document.getElementById('statWatching').textContent = s.watching;
-          document.getElementById('statMarathon').textContent = s.marathon;
-          document.getElementById('statHold').textContent = s.hold;
-          document.getElementById('statDrop').textContent = s.drop;
-          document.getElementById('statFavorites').textContent = s.favorites;
-          document.getElementById('statEpisodes').textContent = s.episodes_watched;
+          applyWatchlistStats(data.stats);
+          return;
+        }
+      }
 
-          document.getElementById('countAll').textContent = s.total;
-          document.getElementById('countAnime').textContent = s.anime;
-          document.getElementById('countMovie').textContent = s.movie;
-          document.getElementById('countSeries').textContent = s.series;
-          document.getElementById('countFavorite').textContent = s.favorites;
+      if (isStaticHost() && window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getWatchlistStats();
+        if (data.success) {
+          applyWatchlistStats(data.stats);
           return;
         }
       }
 
       const res = await apiFetch('/api/stats');
-      const data = await res.json();
-      if (data.success) {
-        const s = data.stats;
-        document.getElementById('statTotal').textContent = s.total;
-        document.getElementById('statWatching').textContent = s.watching;
-        document.getElementById('statMarathon').textContent = s.marathon;
-        document.getElementById('statHold').textContent = s.hold;
-        document.getElementById('statDrop').textContent = s.drop;
-        document.getElementById('statFavorites').textContent = s.favorites;
-        document.getElementById('statEpisodes').textContent = s.episodes_watched;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          applyWatchlistStats(data.stats);
+          return;
+        }
+      }
 
-        document.getElementById('countAll').textContent = s.total;
-        document.getElementById('countAnime').textContent = s.anime;
-        document.getElementById('countMovie').textContent = s.movie;
-        document.getElementById('countSeries').textContent = s.series;
-        document.getElementById('countFavorite').textContent = s.favorites;
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getWatchlistStats();
+        if (data.success) applyWatchlistStats(data.stats);
       }
     } catch (err) {
-      console.error(err);
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getWatchlistStats();
+        if (data.success) applyWatchlistStats(data.stats);
+      }
     }
+  }
+
+  function applyWatchlistStats(s) {
+    if (!s) return;
+    const setT = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    setT('statTotal', s.total || 0);
+    setT('statWatching', s.watching || 0);
+    setT('statMarathon', s.marathon || 0);
+    setT('statHold', s.hold || 0);
+    setT('statDrop', s.drop || 0);
+    setT('statFavorites', s.favorites || 0);
+    setT('statEpisodes', s.episodes_watched || 0);
+
+    setT('countAll', s.total || 0);
+    setT('countAnime', s.anime || 0);
+    setT('countMovie', s.movie || 0);
+    setT('countSeries', s.series || 0);
+    setT('countFavorite', s.favorites || 0);
   }
 
   function renderWatchlistItems() {
@@ -782,6 +923,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (isStaticHost() && window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateWatchlistItem(id, payload);
+        } else {
+          window.JoynessGuestStore.addWatchlistItem(payload);
+        }
+        closeWatchlistModal();
+        showToast(id ? 'Title updated!' : 'Title added to watchlist!', 'success');
+        loadWatchlistStats();
+        loadWatchlistItems();
+        return;
+      }
+
       const url = id ? `/api/items/${id}` : '/api/items';
       const method = id ? 'PUT' : 'POST';
 
@@ -790,17 +944,43 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          closeWatchlistModal();
+          showToast(id ? 'Title updated!' : 'Title added to watchlist!', 'success');
+          loadWatchlistStats();
+          loadWatchlistItems();
+          return;
+        }
+      }
 
-      if (data.success) {
+      // If backend offline or 404
+      if (window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateWatchlistItem(id, payload);
+        } else {
+          window.JoynessGuestStore.addWatchlistItem(payload);
+        }
         closeWatchlistModal();
         showToast(id ? 'Title updated!' : 'Title added to watchlist!', 'success');
         loadWatchlistStats();
         loadWatchlistItems();
-      } else {
-        showToast(data.error || 'Failed to save', 'error');
+        return;
       }
     } catch (err) {
+      if (window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateWatchlistItem(id, payload);
+        } else {
+          window.JoynessGuestStore.addWatchlistItem(payload);
+        }
+        closeWatchlistModal();
+        showToast(id ? 'Title updated!' : 'Title added to watchlist!', 'success');
+        loadWatchlistStats();
+        loadWatchlistItems();
+        return;
+      }
       console.error(err);
       showToast('Error saving item', 'error');
     }
@@ -810,11 +990,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
-    showToast('Importing spreadsheet...', 'success');
+    showToast('Importing spreadsheet...', 'info');
     try {
+      if (isStaticHost() || !window.JoynessAuth.isLiveFirebase()) {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        let imported = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const parts = lines[i].split(',').map(s => s.replace(/^"|"$/g, '').trim());
+          if (parts[0]) {
+            const item = {
+              title: parts[0],
+              category: parts[1] || 'anime',
+              status: parts[2] || 'watching',
+              current_ep: parseInt(parts[3]) || 0,
+              total_ep: parseInt(parts[4]) || 0,
+              rating: parseInt(parts[5]) || 0,
+              website: parts[6] || '',
+              notes: parts[7] || ''
+            };
+            if (isFirestoreActive()) {
+              await window.JoynessFirestore.addWatchlistItem(window.JoynessAuth.getCurrentUser().uid, item);
+            } else if (window.JoynessGuestStore) {
+              window.JoynessGuestStore.addWatchlistItem(item);
+            }
+            imported++;
+          }
+        }
+        showToast(`Successfully imported ${imported} titles!`, 'success');
+        csvFileInput.value = '';
+        loadWatchlistStats();
+        loadWatchlistItems();
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
       const res = await apiFetch('/api/import/csv', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
@@ -1037,51 +1248,59 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentUser = window.JoynessAuth.getCurrentUser();
         const data = await window.JoynessFirestore.getTcgStats(currentUser.uid);
         if (data.success) {
-          const s = data.stats;
-          const setVal = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = val;
-          };
+          applyTcgStats(data.stats);
+          return;
+        }
+      }
 
-          setVal('tcgStatCollection', s.collection_count);
-          setVal('tcgStatValue', `$${s.collection_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-          setVal('tcgStatHunting', s.hunting_count);
-          setVal('tcgStatFound', s.hunting_found);
-          setVal('tcgStatDecks', s.deck_total);
-          setVal('tcgStatFavorites', s.tcg_favorites);
-
-          setVal('tcgCountCollection', s.collection_count);
-          setVal('tcgCountHunting', s.hunting_count);
-          setVal('tcgCountDecks', s.deck_total);
-          setVal('tcgCountFavorites', s.tcg_favorites);
+      if (isStaticHost() && window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgStats();
+        if (data.success) {
+          applyTcgStats(data.stats);
           return;
         }
       }
 
       const res = await apiFetch('/api/tcg/stats');
-      const data = await res.json();
-      if (data.success) {
-        const s = data.stats;
-        const setVal = (id, val) => {
-          const el = document.getElementById(id);
-          if (el) el.textContent = val;
-        };
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          applyTcgStats(data.stats);
+          return;
+        }
+      }
 
-        setVal('tcgStatCollection', s.collection_count);
-        setVal('tcgStatValue', `$${s.collection_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-        setVal('tcgStatHunting', s.hunting_count);
-        setVal('tcgStatFound', s.hunting_found);
-        setVal('tcgStatDecks', s.deck_total);
-        setVal('tcgStatFavorites', s.tcg_favorites);
-
-        setVal('tcgCountCollection', s.collection_count);
-        setVal('tcgCountHunting', s.hunting_count);
-        setVal('tcgCountDecks', s.deck_total);
-        setVal('tcgCountFavorites', s.tcg_favorites);
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgStats();
+        if (data.success) applyTcgStats(data.stats);
       }
     } catch (err) {
-      console.error(err);
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgStats();
+        if (data.success) applyTcgStats(data.stats);
+      }
     }
+  }
+
+  function applyTcgStats(s) {
+    if (!s) return;
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+
+    setVal('tcgStatCollection', s.collection_count || 0);
+    const colVal = s.collection_value !== undefined ? s.collection_value : (s.total_value || 0);
+    setVal('tcgStatValue', `$${(Number(colVal) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    setVal('tcgStatHunting', s.hunting_count || 0);
+    setVal('tcgStatFound', s.hunting_found || 0);
+    setVal('tcgStatDecks', s.deck_total || 0);
+    setVal('tcgStatFavorites', s.tcg_favorites || 0);
+
+    setVal('tcgCountCollection', s.collection_count || 0);
+    setVal('tcgCountHunting', s.hunting_count || 0);
+    setVal('tcgCountDecks', s.deck_total || 0);
+    setVal('tcgCountFavorites', s.tcg_favorites || 0);
   }
 
   async function loadTcgCards() {
@@ -1089,6 +1308,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isFirestoreActive()) {
         const currentUser = window.JoynessAuth.getCurrentUser();
         const data = await window.JoynessFirestore.getTcgCards(currentUser.uid, {
+          card_type: (state.tcg.subtab === 'hunting') ? 'hunting' : (state.tcg.subtab === 'collection' ? 'collection' : ''),
+          game: state.tcg.game,
+          status: state.tcg.status,
+          search: state.tcg.search,
+          favorites: (state.tcg.subtab === 'favorites')
+        });
+        if (data.success) {
+          state.tcg.cards = data.cards;
+          renderTcgCards();
+          return;
+        }
+      }
+
+      if (isStaticHost() && window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgCards({
           card_type: (state.tcg.subtab === 'hunting') ? 'hunting' : (state.tcg.subtab === 'collection' ? 'collection' : ''),
           game: state.tcg.game,
           status: state.tcg.status,
@@ -1124,13 +1358,44 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const res = await apiFetch(`/api/tcg/cards?${params.toString()}`);
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          state.tcg.cards = data.cards;
+          renderTcgCards();
+          return;
+        }
+      }
 
-      if (data.success) {
-        state.tcg.cards = data.cards;
-        renderTcgCards();
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgCards({
+          card_type: (state.tcg.subtab === 'hunting') ? 'hunting' : (state.tcg.subtab === 'collection' ? 'collection' : ''),
+          game: state.tcg.game,
+          status: state.tcg.status,
+          search: state.tcg.search,
+          favorites: (state.tcg.subtab === 'favorites')
+        });
+        if (data.success) {
+          state.tcg.cards = data.cards;
+          renderTcgCards();
+          return;
+        }
       }
     } catch (err) {
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgCards({
+          card_type: (state.tcg.subtab === 'hunting') ? 'hunting' : (state.tcg.subtab === 'collection' ? 'collection' : ''),
+          game: state.tcg.game,
+          status: state.tcg.status,
+          search: state.tcg.search,
+          favorites: (state.tcg.subtab === 'favorites')
+        });
+        if (data.success) {
+          state.tcg.cards = data.cards;
+          renderTcgCards();
+          return;
+        }
+      }
       console.error(err);
       showToast('Failed to load TCG cards', 'error');
     }
@@ -1270,6 +1535,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (isStaticHost() && window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateTcgCard(id, payload);
+        } else {
+          window.JoynessGuestStore.addTcgCard(payload);
+        }
+        closeTcgCardModal();
+        showToast(id ? 'Card updated!' : 'Card added to vault!', 'success');
+        loadTcgStats();
+        loadTcgContent();
+        return;
+      }
+
       const url = id ? `/api/tcg/cards/${id}` : '/api/tcg/cards';
       const method = id ? 'PUT' : 'POST';
 
@@ -1278,17 +1556,42 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          closeTcgCardModal();
+          showToast(id ? 'Card updated!' : 'Card added to vault!', 'success');
+          loadTcgStats();
+          loadTcgContent();
+          return;
+        }
+      }
 
-      if (data.success) {
+      if (window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateTcgCard(id, payload);
+        } else {
+          window.JoynessGuestStore.addTcgCard(payload);
+        }
         closeTcgCardModal();
         showToast(id ? 'Card updated!' : 'Card added to vault!', 'success');
         loadTcgStats();
         loadTcgContent();
-      } else {
-        showToast(data.error || 'Failed to save card', 'error');
+        return;
       }
     } catch (err) {
+      if (window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateTcgCard(id, payload);
+        } else {
+          window.JoynessGuestStore.addTcgCard(payload);
+        }
+        closeTcgCardModal();
+        showToast(id ? 'Card updated!' : 'Card added to vault!', 'success');
+        loadTcgStats();
+        loadTcgContent();
+        return;
+      }
       console.error(err);
       showToast('Error saving card', 'error');
     }
@@ -1518,6 +1821,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (isStaticHost() && window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateTcgDeck(id, payload);
+        } else {
+          window.JoynessGuestStore.addTcgDeck(payload);
+        }
+        closeTcgDeckModal();
+        showToast(id ? 'Decklist updated!' : 'Deck created successfully!', 'success');
+        loadTcgStats();
+        loadTcgDecks();
+        return;
+      }
+
       const url = id ? `/api/tcg/decks/${id}` : '/api/tcg/decks';
       const method = id ? 'PUT' : 'POST';
 
@@ -1526,17 +1842,42 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          closeTcgDeckModal();
+          showToast(id ? 'Decklist updated!' : 'Deck created successfully!', 'success');
+          loadTcgStats();
+          loadTcgDecks();
+          return;
+        }
+      }
 
-      if (data.success) {
+      if (window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateTcgDeck(id, payload);
+        } else {
+          window.JoynessGuestStore.addTcgDeck(payload);
+        }
         closeTcgDeckModal();
         showToast(id ? 'Decklist updated!' : 'Deck created successfully!', 'success');
         loadTcgStats();
         loadTcgDecks();
-      } else {
-        showToast(data.error || 'Failed to save deck', 'error');
+        return;
       }
     } catch (err) {
+      if (window.JoynessGuestStore) {
+        if (id) {
+          window.JoynessGuestStore.updateTcgDeck(id, payload);
+        } else {
+          window.JoynessGuestStore.addTcgDeck(payload);
+        }
+        closeTcgDeckModal();
+        showToast(id ? 'Decklist updated!' : 'Deck created successfully!', 'success');
+        loadTcgStats();
+        loadTcgDecks();
+        return;
+      }
       console.error(err);
       showToast('Error saving deck', 'error');
     }
@@ -1557,6 +1898,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      if (isStaticHost() && window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgDecks({
+          game: state.tcg.game,
+          search: state.tcg.search
+        });
+        if (data.success) {
+          state.tcg.decks = data.decks;
+          renderTcgDecks();
+          return;
+        }
+      }
+
       const params = new URLSearchParams();
       if (state.tcg.game !== 'all') {
         params.append('game', state.tcg.game);
@@ -1566,13 +1919,38 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const res = await apiFetch(`/api/tcg/decks?${params.toString()}`);
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          state.tcg.decks = data.decks;
+          renderTcgDecks();
+          return;
+        }
+      }
 
-      if (data.success) {
-        state.tcg.decks = data.decks;
-        renderTcgDecks();
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgDecks({
+          game: state.tcg.game,
+          search: state.tcg.search
+        });
+        if (data.success) {
+          state.tcg.decks = data.decks;
+          renderTcgDecks();
+          return;
+        }
       }
     } catch (err) {
+      if (window.JoynessGuestStore) {
+        const data = window.JoynessGuestStore.getTcgDecks({
+          game: state.tcg.game,
+          search: state.tcg.search
+        });
+        if (data.success) {
+          state.tcg.decks = data.decks;
+          renderTcgDecks();
+          return;
+        }
+      }
       console.error(err);
       showToast('Failed to load decks', 'error');
     }
@@ -1734,14 +2112,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      let url = '';
-      if (target.type === 'watchlist') url = `/api/items/${target.id}`;
-      else if (target.type === 'tcg_card') url = `/api/tcg/cards/${target.id}`;
-      else if (target.type === 'tcg_deck') url = `/api/tcg/decks/${target.id}`;
-
-      const res = await apiFetch(url, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
+      if (isStaticHost() && window.JoynessGuestStore) {
+        if (target.type === 'watchlist') {
+          window.JoynessGuestStore.deleteWatchlistItem(target.id);
+        } else if (target.type === 'tcg_card') {
+          window.JoynessGuestStore.deleteTcgCard(target.id);
+        } else if (target.type === 'tcg_deck') {
+          window.JoynessGuestStore.deleteTcgDeck(target.id);
+        }
         showToast('Item deleted successfully', 'success');
         closeDeleteModal();
         if (target.type === 'watchlist') {
@@ -1751,10 +2129,70 @@ document.addEventListener('DOMContentLoaded', () => {
           loadTcgStats();
           loadTcgContent();
         }
-      } else {
-        showToast(data.error || 'Failed to delete item', 'error');
+        return;
+      }
+
+      let url = '';
+      if (target.type === 'watchlist') url = `/api/items/${target.id}`;
+      else if (target.type === 'tcg_card') url = `/api/tcg/cards/${target.id}`;
+      else if (target.type === 'tcg_deck') url = `/api/tcg/decks/${target.id}`;
+
+      const res = await apiFetch(url, { method: 'DELETE' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          showToast('Item deleted successfully', 'success');
+          closeDeleteModal();
+          if (target.type === 'watchlist') {
+            loadWatchlistStats();
+            loadWatchlistItems();
+          } else {
+            loadTcgStats();
+            loadTcgContent();
+          }
+          return;
+        }
+      }
+
+      if (window.JoynessGuestStore) {
+        if (target.type === 'watchlist') {
+          window.JoynessGuestStore.deleteWatchlistItem(target.id);
+        } else if (target.type === 'tcg_card') {
+          window.JoynessGuestStore.deleteTcgCard(target.id);
+        } else if (target.type === 'tcg_deck') {
+          window.JoynessGuestStore.deleteTcgDeck(target.id);
+        }
+        showToast('Item deleted successfully', 'success');
+        closeDeleteModal();
+        if (target.type === 'watchlist') {
+          loadWatchlistStats();
+          loadWatchlistItems();
+        } else {
+          loadTcgStats();
+          loadTcgContent();
+        }
+        return;
       }
     } catch (err) {
+      if (window.JoynessGuestStore) {
+        if (target.type === 'watchlist') {
+          window.JoynessGuestStore.deleteWatchlistItem(target.id);
+        } else if (target.type === 'tcg_card') {
+          window.JoynessGuestStore.deleteTcgCard(target.id);
+        } else if (target.type === 'tcg_deck') {
+          window.JoynessGuestStore.deleteTcgDeck(target.id);
+        }
+        showToast('Item deleted successfully', 'success');
+        closeDeleteModal();
+        if (target.type === 'watchlist') {
+          loadWatchlistStats();
+          loadWatchlistItems();
+        } else {
+          loadTcgStats();
+          loadTcgContent();
+        }
+        return;
+      }
       console.error(err);
       showToast('Error deleting item', 'error');
     }
@@ -2209,11 +2647,22 @@ document.addEventListener('DOMContentLoaded', () => {
       titleTallyDebounce = setTimeout(async () => {
         try {
           const cat = formCategory.value;
-          const res = await apiFetch(`/api/resolve_image?query=${encodeURIComponent(title)}&type=watchlist&game=${encodeURIComponent(cat)}`);
-          const data = await res.json();
-          if (data.success && data.image_url) {
-            posterPreviewImg.src = data.image_url;
-            formImageUrl.value = data.image_url;
+          let matchedUrl = '';
+          try {
+            const res = await apiFetch(`/api/resolve_image?query=${encodeURIComponent(title)}&type=watchlist&game=${encodeURIComponent(cat)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.image_url) matchedUrl = data.image_url;
+            }
+          } catch (_) {}
+
+          if (!matchedUrl) {
+            matchedUrl = await resolveImageClientSide(title, cat);
+          }
+
+          if (matchedUrl) {
+            posterPreviewImg.src = matchedUrl;
+            formImageUrl.value = matchedUrl;
             posterTallyTitle.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Cover auto-matched';
             posterTallySub.textContent = `Matched artwork for "${title}"`;
           }
@@ -2277,6 +2726,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const game = formTcgGame.value;
     const cond = formTcgCondition.value;
 
+    let c = null;
     try {
       const params = new URLSearchParams({
         name,
@@ -2285,50 +2735,53 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const res = await apiFetch(`/api/tcg/auto_card_info?${params.toString()}`);
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.card) c = data.card;
+      }
+    } catch (_) {}
 
-      if (data.success && data.card) {
-        const c = data.card;
+    if (!c) {
+      c = resolveCardInfoClientSide(name, game);
+    }
 
-        // Auto-tally image
-        if (c.image_url) {
-          cardPreviewImg.src = c.image_url;
-          formTcgImageUrl.value = c.image_url;
-          imageTallyTitle.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Artwork auto-matched';
-          imageTallySub.textContent = `Matched artwork for "${name}"`;
-        }
+    if (c) {
+      // Auto-tally image
+      if (c.image_url) {
+        cardPreviewImg.src = c.image_url;
+        formTcgImageUrl.value = c.image_url;
+        imageTallyTitle.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Artwork auto-matched';
+        imageTallySub.textContent = `Matched artwork for "${name}"`;
+      }
 
-        // Auto-fetch price
-        if (c.price_usd > 0) {
-          formTcgPrice.value = c.price_usd.toFixed(2);
-          cardPriceSourceChip.innerHTML = `<i class="ri-sparkling-fill"></i> Auto-priced from ${escapeHtml(c.source)}`;
-          if (c.price_jpy > 0) {
-            cardPriceJpyHint.textContent = `(¥${c.price_jpy.toLocaleString()} JPY)`;
-          } else {
-            cardPriceJpyHint.textContent = '';
-          }
-        }
-
-        // Populate set & number if currently empty
-        if (!formTcgSet.value && c.set_name) {
-          formTcgSet.value = c.set_name;
-        }
-        if (!formTcgNumber.value && c.card_number) {
-          formTcgNumber.value = c.card_number;
-        }
-        if (!formTcgRarity.value && c.rarity) {
-          formTcgRarity.value = c.rarity;
-        }
-
-        if (forceNotification) {
-          showToast(`Market info synced from ${c.source}! ($${c.price_usd.toFixed(2)})`, 'success');
+      // Auto-fetch price
+      const priceUsd = c.price_usd !== undefined ? c.price_usd : (parseFloat(c.price_est) || 0);
+      if (priceUsd > 0) {
+        formTcgPrice.value = priceUsd.toFixed(2);
+        cardPriceSourceChip.innerHTML = `<i class="ri-sparkling-fill"></i> Auto-priced from ${escapeHtml(c.source || 'Database')}`;
+        if (c.price_jpy > 0) {
+          cardPriceJpyHint.textContent = `(¥${c.price_jpy.toLocaleString()} JPY)`;
+        } else {
+          cardPriceJpyHint.textContent = '';
         }
       }
-    } catch (err) {
-      console.error('Error auto-fetching card info:', err);
+
+      // Populate set & number if currently empty
+      if (!formTcgSet.value && c.set_name) {
+        formTcgSet.value = c.set_name;
+      }
+      if (!formTcgNumber.value && c.card_number) {
+        formTcgNumber.value = c.card_number;
+      }
+      if (!formTcgRarity.value && c.rarity) {
+        formTcgRarity.value = c.rarity;
+      }
+
       if (forceNotification) {
-        showToast('Could not fetch market data', 'error');
+        showToast(`Auto-matched artwork and pricing for ${name}!`, 'success');
       }
+    } else if (forceNotification) {
+      showToast('Could not automatically price this card. Please enter manually.', 'info');
     }
   }
 
@@ -2425,19 +2878,42 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        if (isStaticHost() && window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { is_favorite: nextFav });
+          showToast(nextFav ? 'Added to Favorites ★' : 'Removed from Favorites', 'success');
+          loadWatchlistStats();
+          loadWatchlistItems();
+          return;
+        }
+
         const res = await apiFetch(`/api/items/${id}/patch`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ is_favorite: nextFav })
         });
-        const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            showToast(nextFav ? 'Added to Favorites ★' : 'Removed from Favorites', 'success');
+            loadWatchlistStats();
+            loadWatchlistItems();
+            return;
+          }
+        }
+
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { is_favorite: nextFav });
           showToast(nextFav ? 'Added to Favorites ★' : 'Removed from Favorites', 'success');
           loadWatchlistStats();
           loadWatchlistItems();
         }
       } catch (err) {
-        console.error(err);
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { is_favorite: nextFav });
+          showToast(nextFav ? 'Added to Favorites ★' : 'Removed from Favorites', 'success');
+          loadWatchlistStats();
+          loadWatchlistItems();
+        }
       }
     },
 
@@ -2452,18 +2928,38 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        if (isStaticHost() && window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { current_ep: newEp });
+          loadWatchlistStats();
+          loadWatchlistItems();
+          return;
+        }
+
         const res = await apiFetch(`/api/items/${id}/patch`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ current_ep: newEp })
         });
-        const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            loadWatchlistStats();
+            loadWatchlistItems();
+            return;
+          }
+        }
+
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { current_ep: newEp });
           loadWatchlistStats();
           loadWatchlistItems();
         }
       } catch (err) {
-        console.error(err);
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { current_ep: newEp });
+          loadWatchlistStats();
+          loadWatchlistItems();
+        }
       }
     },
 
@@ -2482,19 +2978,42 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        if (isStaticHost() && window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { status: nextStatus });
+          showToast(`Status updated: ${nextStatus.toUpperCase()}`, 'success');
+          loadWatchlistStats();
+          loadWatchlistItems();
+          return;
+        }
+
         const res = await apiFetch(`/api/items/${id}/patch`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: nextStatus })
         });
-        const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            showToast(`Status updated: ${nextStatus.toUpperCase()}`, 'success');
+            loadWatchlistStats();
+            loadWatchlistItems();
+            return;
+          }
+        }
+
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { status: nextStatus });
           showToast(`Status updated: ${nextStatus.toUpperCase()}`, 'success');
           loadWatchlistStats();
           loadWatchlistItems();
         }
       } catch (err) {
-        console.error(err);
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchWatchlistItem(id, { status: nextStatus });
+          showToast(`Status updated: ${nextStatus.toUpperCase()}`, 'success');
+          loadWatchlistStats();
+          loadWatchlistItems();
+        }
       }
     },
 
@@ -2536,19 +3055,42 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        if (isStaticHost() && window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchTcgCard(id, { is_favorite: nextFav });
+          showToast(nextFav ? 'Card starred as Favorite ★' : 'Removed from Favorites', 'success');
+          loadTcgStats();
+          loadTcgContent();
+          return;
+        }
+
         const res = await apiFetch(`/api/tcg/cards/${id}/patch`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ is_favorite: nextFav })
         });
-        const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            showToast(nextFav ? 'Card starred as Favorite ★' : 'Removed from Favorites', 'success');
+            loadTcgStats();
+            loadTcgContent();
+            return;
+          }
+        }
+
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchTcgCard(id, { is_favorite: nextFav });
           showToast(nextFav ? 'Card starred as Favorite ★' : 'Removed from Favorites', 'success');
           loadTcgStats();
           loadTcgContent();
         }
       } catch (err) {
-        console.error(err);
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchTcgCard(id, { is_favorite: nextFav });
+          showToast(nextFav ? 'Card starred as Favorite ★' : 'Removed from Favorites', 'success');
+          loadTcgStats();
+          loadTcgContent();
+        }
       }
     },
 
@@ -2567,19 +3109,42 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        if (isStaticHost() && window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchTcgCard(id, { status: nextStatus });
+          showToast(`Hunt Status: ${nextStatus.toUpperCase()}`, 'success');
+          loadTcgStats();
+          loadTcgContent();
+          return;
+        }
+
         const res = await apiFetch(`/api/tcg/cards/${id}/patch`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: nextStatus })
         });
-        const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            showToast(`Hunt Status: ${nextStatus.toUpperCase()}`, 'success');
+            loadTcgStats();
+            loadTcgContent();
+            return;
+          }
+        }
+
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchTcgCard(id, { status: nextStatus });
           showToast(`Hunt Status: ${nextStatus.toUpperCase()}`, 'success');
           loadTcgStats();
           loadTcgContent();
         }
       } catch (err) {
-        console.error(err);
+        if (window.JoynessGuestStore) {
+          window.JoynessGuestStore.patchTcgCard(id, { status: nextStatus });
+          showToast(`Hunt Status: ${nextStatus.toUpperCase()}`, 'success');
+          loadTcgStats();
+          loadTcgContent();
+        }
       }
     },
 

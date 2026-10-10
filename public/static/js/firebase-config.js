@@ -119,6 +119,8 @@ const STARTER_SEED_DATA = {
   ]
 };
 
+window.JoynessStarterData = STARTER_SEED_DATA;
+
 // ------------------------------------------------------------------------------
 // 2. UNIVERSAL AUTHENTICATION SERVICE (Firebase Auth + Fallback Native Engine)
 // ------------------------------------------------------------------------------
@@ -265,36 +267,74 @@ class JoynessAuthService {
 
     // Live Firebase Sign-up
     if (this.isFirebaseReady && this.auth) {
-      const userCredential = await this.auth.createUserWithEmailAndPassword(email, password);
-      if (displayName && userCredential.user.updateProfile) {
-        await userCredential.user.updateProfile({ displayName });
+      try {
+        const userCredential = await this.auth.createUserWithEmailAndPassword(email, password);
+        if (displayName && userCredential.user.updateProfile) {
+          await userCredential.user.updateProfile({ displayName });
+        }
+        // Create user record in Firestore
+        if (window.JoynessFirestore && window.JoynessFirestore.db) {
+          await window.JoynessFirestore.db.collection('users').doc(userCredential.user.uid).set({
+            email,
+            displayName: displayName || email.split('@')[0],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+        return userCredential.user;
+      } catch (err) {
+        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.toLowerCase().includes('unauthorized domain'))) {
+          throw new Error(`Domain not authorized in Firebase! Please add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`);
+        }
+        throw err;
       }
-      // Create user record in Firestore
-      if (window.JoynessFirestore && window.JoynessFirestore.db) {
-        await window.JoynessFirestore.db.collection('users').doc(userCredential.user.uid).set({
+    }
+
+    // Native SQLite Backend Registration (with static host fallback)
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, display_name: displayName })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Registration failed');
+        }
+        this.currentUser = data.user;
+        this.sessionToken = data.user.token;
+        localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
+        localStorage.setItem('joyness_session_token', this.sessionToken);
+        this.notifyListeners();
+        return this.currentUser;
+      }
+    } catch (apiErr) {
+      // If backend API 404s (e.g. static host like Netlify)
+      if (apiErr.message && !apiErr.message.includes('Registration failed')) {
+        this.currentUser = {
+          uid: 'guest_' + Math.random().toString(36).substring(2, 9),
           email,
           displayName: displayName || email.split('@')[0],
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+          isOfflineGuest: true
+        };
+        this.sessionToken = 'offline_token_' + Date.now();
+        localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
+        localStorage.setItem('joyness_session_token', this.sessionToken);
+        this.notifyListeners();
+        return this.currentUser;
       }
-      return userCredential.user;
+      throw apiErr;
     }
 
-    // Native SQLite Backend Registration
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, display_name: displayName })
-    });
-
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Registration failed');
-    }
-
-    this.currentUser = data.user;
-    this.sessionToken = data.user.token;
+    // Fallback registration
+    this.currentUser = {
+      uid: 'guest_' + Math.random().toString(36).substring(2, 9),
+      email,
+      displayName: displayName || email.split('@')[0]
+    };
+    this.sessionToken = 'token_' + Date.now();
     localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
     localStorage.setItem('joyness_session_token', this.sessionToken);
     this.notifyListeners();
@@ -308,39 +348,74 @@ class JoynessAuthService {
 
     // Live Firebase Email/Password Sign-in
     if (this.isFirebaseReady && this.auth) {
-      const userCredential = await this.auth.signInWithEmailAndPassword(email, password);
-      // Update lastLogin in Firestore
-      if (window.JoynessFirestore && window.JoynessFirestore.db) {
-        window.JoynessFirestore.db.collection('users').doc(userCredential.user.uid).set({
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(() => {});
+      try {
+        const userCredential = await this.auth.signInWithEmailAndPassword(email, password);
+        // Update lastLogin in Firestore
+        if (window.JoynessFirestore && window.JoynessFirestore.db) {
+          window.JoynessFirestore.db.collection('users').doc(userCredential.user.uid).set({
+            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }).catch(() => {});
+        }
+        return userCredential.user;
+      } catch (err) {
+        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.toLowerCase().includes('unauthorized domain'))) {
+          throw new Error(`Domain not authorized in Firebase! Please add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`);
+        }
+        throw err;
       }
-      return userCredential.user;
     }
 
-    // Native SQLite Backend Login
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, remember_me: rememberMe })
-    });
+    // Native SQLite Backend Login (with static host fallback)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, remember_me: rememberMe })
+      });
 
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Invalid email or password');
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Invalid email or password');
+        }
+
+        this.currentUser = data.user;
+        this.sessionToken = data.user.token;
+        if (rememberMe) {
+          localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
+          localStorage.setItem('joyness_session_token', this.sessionToken);
+        } else {
+          sessionStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
+          sessionStorage.setItem('joyness_session_token', this.sessionToken);
+        }
+        this.notifyListeners();
+        return this.currentUser;
+      }
+    } catch (apiErr) {
+      if (apiErr.message && !apiErr.message.includes('Invalid email')) {
+        this.currentUser = {
+          uid: 'guest_' + Math.random().toString(36).substring(2, 9),
+          email,
+          displayName: email.split('@')[0],
+          isOfflineGuest: true
+        };
+        this.sessionToken = 'offline_token_' + Date.now();
+        localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
+        localStorage.setItem('joyness_session_token', this.sessionToken);
+        this.notifyListeners();
+        return this.currentUser;
+      }
+      throw apiErr;
     }
 
-    this.currentUser = data.user;
-    this.sessionToken = data.user.token;
-
-    if (rememberMe) {
-      localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
-      localStorage.setItem('joyness_session_token', this.sessionToken);
-    } else {
-      sessionStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
-      sessionStorage.setItem('joyness_session_token', this.sessionToken);
-    }
-
+    this.currentUser = {
+      uid: 'guest_' + Math.random().toString(36).substring(2, 9),
+      email,
+      displayName: email.split('@')[0]
+    };
+    this.sessionToken = 'token_' + Date.now();
+    localStorage.setItem('joyness_session_user', JSON.stringify(this.currentUser));
+    localStorage.setItem('joyness_session_token', this.sessionToken);
     this.notifyListeners();
     return this.currentUser;
   }
@@ -348,19 +423,26 @@ class JoynessAuthService {
   // GOOGLE SIGN IN
   async loginWithGoogle() {
     if (this.isFirebaseReady && this.auth) {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await this.auth.signInWithPopup(provider);
-      // Update user record in Firestore
-      if (window.JoynessFirestore && window.JoynessFirestore.db) {
-        window.JoynessFirestore.db.collection('users').doc(result.user.uid).set({
-          email: result.user.email,
-          displayName: result.user.displayName || result.user.email.split('@')[0],
-          photoURL: result.user.photoURL || '',
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(() => {});
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const result = await this.auth.signInWithPopup(provider);
+        // Update user record in Firestore
+        if (window.JoynessFirestore && window.JoynessFirestore.db) {
+          window.JoynessFirestore.db.collection('users').doc(result.user.uid).set({
+            email: result.user.email,
+            displayName: result.user.displayName || result.user.email.split('@')[0],
+            photoURL: result.user.photoURL || '',
+            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }).catch(() => {});
+        }
+        return result.user;
+      } catch (err) {
+        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.toLowerCase().includes('unauthorized domain'))) {
+          throw new Error(`Domain not authorized in Firebase! Please add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`);
+        }
+        throw err;
       }
-      return result.user;
     }
 
     // If Firebase is awaiting API key, prompt demo guest login
@@ -753,9 +835,318 @@ class JoynessFirestoreService {
 }
 
 // ------------------------------------------------------------------------------
+// 4. CLIENT-SIDE GUEST STORAGE SERVICE (For Static Hosts like Netlify & Offline Mode)
+// ------------------------------------------------------------------------------
+class JoynessGuestStoreService {
+  constructor() {
+    this.STORAGE_KEYS = {
+      WATCHLIST: 'joyness_guest_watchlist_v1',
+      CARDS: 'joyness_guest_cards_v1',
+      DECKS: 'joyness_guest_decks_v1'
+    };
+    this.ensureInitialized();
+  }
+
+  ensureInitialized() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      if (!localStorage.getItem(this.STORAGE_KEYS.WATCHLIST)) {
+        const items = ((window.JoynessStarterData && window.JoynessStarterData.items) || []).map((item, idx) => ({
+          id: 'wl_' + (idx + 1),
+          ...item
+        }));
+        localStorage.setItem(this.STORAGE_KEYS.WATCHLIST, JSON.stringify(items));
+      }
+      if (!localStorage.getItem(this.STORAGE_KEYS.CARDS)) {
+        const cards = ((window.JoynessStarterData && window.JoynessStarterData.cards) || []).map((card, idx) => ({
+          id: 'card_' + (idx + 1),
+          ...card
+        }));
+        localStorage.setItem(this.STORAGE_KEYS.CARDS, JSON.stringify(cards));
+      }
+      if (!localStorage.getItem(this.STORAGE_KEYS.DECKS)) {
+        const decks = ((window.JoynessStarterData && window.JoynessStarterData.decks) || []).map((deck, idx) => ({
+          id: 'deck_' + (idx + 1),
+          ...deck
+        }));
+        localStorage.setItem(this.STORAGE_KEYS.DECKS, JSON.stringify(decks));
+      }
+    } catch(e) {
+      console.warn('GuestStore initialization warning:', e);
+    }
+  }
+
+  // WATCHLIST
+  getWatchlistItems({ category = 'all', status = 'all', search = '', sort = 'id', order = 'asc' } = {}) {
+    this.ensureInitialized();
+    let items = [];
+    try {
+      items = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.WATCHLIST) || '[]');
+    } catch(e) { items = []; }
+
+    if (category === 'favorite') {
+      items = items.filter(i => Boolean(i.is_favorite));
+    } else if (category && category !== 'all') {
+      items = items.filter(i => (i.category || '').toLowerCase() === category.toLowerCase());
+    }
+    if (status && status !== 'all') {
+      items = items.filter(i => (i.status || '').toLowerCase() === status.toLowerCase());
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      items = items.filter(i => (i.title || '').toLowerCase().includes(q) || (i.notes || '').toLowerCase().includes(q));
+    }
+    items.sort((a, b) => {
+      let vA = a[sort] !== undefined ? a[sort] : '';
+      let vB = b[sort] !== undefined ? b[sort] : '';
+      if (typeof vA === 'string') vA = vA.toLowerCase();
+      if (typeof vB === 'string') vB = vB.toLowerCase();
+      if (order === 'desc') return vA < vB ? 1 : (vA > vB ? -1 : 0);
+      return vA > vB ? 1 : (vA < vB ? -1 : 0);
+    });
+    return { success: true, items };
+  }
+
+  getWatchlistStats() {
+    this.ensureInitialized();
+    let items = [];
+    try {
+      items = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.WATCHLIST) || '[]');
+    } catch(e) { items = []; }
+
+    const stats = {
+      total: items.length,
+      watching: items.filter(i => i.status === 'watching').length,
+      marathon: items.filter(i => i.status === 'marathon').length,
+      hold: items.filter(i => i.status === 'hold').length,
+      drop: items.filter(i => i.status === 'drop').length,
+      completed: items.filter(i => i.status === 'completed').length,
+      favorites: items.filter(i => Boolean(i.is_favorite)).length,
+      episodes_watched: items.reduce((sum, i) => sum + (parseInt(i.current_ep) || 0), 0),
+      anime: items.filter(i => i.category === 'anime').length,
+      movie: items.filter(i => i.category === 'movie').length,
+      series: items.filter(i => i.category === 'series').length
+    };
+    return { success: true, stats };
+  }
+
+  addWatchlistItem(data) {
+    this.ensureInitialized();
+    let items = [];
+    try {
+      items = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.WATCHLIST) || '[]');
+    } catch(e) { items = []; }
+
+    const newItem = {
+      id: 'wl_' + Date.now(),
+      ...data,
+      is_favorite: data.is_favorite ? 1 : 0
+    };
+    items.unshift(newItem);
+    localStorage.setItem(this.STORAGE_KEYS.WATCHLIST, JSON.stringify(items));
+    return { success: true, item: newItem };
+  }
+
+  updateWatchlistItem(id, data) {
+    this.ensureInitialized();
+    let items = [];
+    try {
+      items = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.WATCHLIST) || '[]');
+    } catch(e) { items = []; }
+
+    const idx = items.findIndex(i => String(i.id) === String(id));
+    if (idx !== -1) {
+      items[idx] = { ...items[idx], ...data, is_favorite: data.is_favorite ? 1 : 0 };
+      localStorage.setItem(this.STORAGE_KEYS.WATCHLIST, JSON.stringify(items));
+    }
+    return { success: true };
+  }
+
+  patchWatchlistItem(id, updates) {
+    return this.updateWatchlistItem(id, updates);
+  }
+
+  deleteWatchlistItem(id) {
+    this.ensureInitialized();
+    let items = [];
+    try {
+      items = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.WATCHLIST) || '[]');
+    } catch(e) { items = []; }
+
+    items = items.filter(i => String(i.id) !== String(id));
+    localStorage.setItem(this.STORAGE_KEYS.WATCHLIST, JSON.stringify(items));
+    return { success: true };
+  }
+
+  // TCG CARDS
+  getTcgCards({ card_type = '', game = 'all', status = 'all', search = '', favorites = false } = {}) {
+    this.ensureInitialized();
+    let cards = [];
+    try {
+      cards = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.CARDS) || '[]');
+    } catch(e) { cards = []; }
+
+    if (card_type) {
+      cards = cards.filter(c => (c.card_type || '').toLowerCase() === card_type.toLowerCase());
+    }
+    if (game && game !== 'all') {
+      cards = cards.filter(c => (c.game || '').toLowerCase() === game.toLowerCase());
+    }
+    if (status && status !== 'all') {
+      cards = cards.filter(c => (c.status || '').toLowerCase() === status.toLowerCase());
+    }
+    if (favorites) {
+      cards = cards.filter(c => Boolean(c.is_favorite));
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      cards = cards.filter(c => 
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.set_name || '').toLowerCase().includes(q) ||
+        (c.card_number || '').toLowerCase().includes(q)
+      );
+    }
+    return { success: true, cards };
+  }
+
+  getTcgStats() {
+    this.ensureInitialized();
+    let cards = [];
+    try {
+      cards = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.CARDS) || '[]');
+    } catch(e) { cards = []; }
+
+    const total_cards = cards.reduce((sum, c) => sum + (parseInt(c.quantity) || 1), 0);
+    const total_value = cards.reduce((sum, c) => sum + ((parseFloat(c.price_est) || 0) * (parseInt(c.quantity) || 1)), 0);
+    const total_jpy = cards.reduce((sum, c) => sum + ((parseInt(c.jpy_price) || 0) * (parseInt(c.quantity) || 1)), 0);
+    const stats = {
+      total_cards,
+      total_value,
+      total_jpy,
+      unique_cards: cards.length,
+      collection_count: cards.filter(c => c.card_type === 'collection').length,
+      hunting_count: cards.filter(c => c.card_type === 'hunting').length,
+      tcg_favorites: cards.filter(c => Boolean(c.is_favorite)).length
+    };
+    return { success: true, stats };
+  }
+
+  addTcgCard(data) {
+    this.ensureInitialized();
+    let cards = [];
+    try {
+      cards = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.CARDS) || '[]');
+    } catch(e) { cards = []; }
+
+    const newCard = {
+      id: 'card_' + Date.now(),
+      ...data,
+      is_favorite: data.is_favorite ? 1 : 0
+    };
+    cards.unshift(newCard);
+    localStorage.setItem(this.STORAGE_KEYS.CARDS, JSON.stringify(cards));
+    return { success: true, card: newCard };
+  }
+
+  updateTcgCard(id, updates) {
+    this.ensureInitialized();
+    let cards = [];
+    try {
+      cards = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.CARDS) || '[]');
+    } catch(e) { cards = []; }
+
+    const idx = cards.findIndex(c => String(c.id) === String(id));
+    if (idx !== -1) {
+      cards[idx] = { ...cards[idx], ...updates };
+      localStorage.setItem(this.STORAGE_KEYS.CARDS, JSON.stringify(cards));
+    }
+    return { success: true };
+  }
+
+  patchTcgCard(id, updates) {
+    return this.updateTcgCard(id, updates);
+  }
+
+  deleteTcgCard(id) {
+    this.ensureInitialized();
+    let cards = [];
+    try {
+      cards = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.CARDS) || '[]');
+    } catch(e) { cards = []; }
+
+    cards = cards.filter(c => String(c.id) !== String(id));
+    localStorage.setItem(this.STORAGE_KEYS.CARDS, JSON.stringify(cards));
+    return { success: true };
+  }
+
+  // TCG DECKS
+  getTcgDecks({ game = 'all', search = '' } = {}) {
+    this.ensureInitialized();
+    let decks = [];
+    try {
+      decks = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.DECKS) || '[]');
+    } catch(e) { decks = []; }
+
+    if (game && game !== 'all') {
+      decks = decks.filter(d => (d.game || '').toLowerCase() === game.toLowerCase());
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      decks = decks.filter(d => (d.deck_name || '').toLowerCase().includes(q) || (d.leader_card || '').toLowerCase().includes(q));
+    }
+    return { success: true, decks };
+  }
+
+  addTcgDeck(data) {
+    this.ensureInitialized();
+    let decks = [];
+    try {
+      decks = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.DECKS) || '[]');
+    } catch(e) { decks = []; }
+
+    const newDeck = {
+      id: 'deck_' + Date.now(),
+      ...data
+    };
+    decks.unshift(newDeck);
+    localStorage.setItem(this.STORAGE_KEYS.DECKS, JSON.stringify(decks));
+    return { success: true, deck: newDeck };
+  }
+
+  updateTcgDeck(id, updates) {
+    this.ensureInitialized();
+    let decks = [];
+    try {
+      decks = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.DECKS) || '[]');
+    } catch(e) { decks = []; }
+
+    const idx = decks.findIndex(d => String(d.id) === String(id));
+    if (idx !== -1) {
+      decks[idx] = { ...decks[idx], ...updates };
+      localStorage.setItem(this.STORAGE_KEYS.DECKS, JSON.stringify(decks));
+    }
+    return { success: true };
+  }
+
+  deleteTcgDeck(id) {
+    this.ensureInitialized();
+    let decks = [];
+    try {
+      decks = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.DECKS) || '[]');
+    } catch(e) { decks = []; }
+
+    decks = decks.filter(d => String(d.id) !== String(id));
+    localStorage.setItem(this.STORAGE_KEYS.DECKS, JSON.stringify(decks));
+    return { success: true };
+  }
+}
+
+// ------------------------------------------------------------------------------
 // GLOBAL INSTANCES
 // ------------------------------------------------------------------------------
 window.JoynessAuth = new JoynessAuthService();
 window.JoynessFirestore = (typeof firebase !== 'undefined' && firebase.firestore) 
   ? new JoynessFirestoreService(firebase.firestore()) 
   : null;
+window.JoynessGuestStore = new JoynessGuestStoreService();
+

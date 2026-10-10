@@ -1,2 +1,14 @@
+# Netlify Deployment Configuration for JOYNESSHOBY
 [build]
   publish = "public"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
