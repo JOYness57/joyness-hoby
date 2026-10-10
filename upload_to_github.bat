@@ -29,6 +29,9 @@ git branch -M main
 git remote remove origin 2>nul
 git remote add origin https://github.com/JOYness57/joyness-hoby.git
 
+echo [*] Syncing with remote repository...
+git pull --rebase origin main 2>nul
+
 echo.
 echo [*] Pushing to GitHub (https://github.com/JOYness57/joyness-hoby.git)...
 echo.
