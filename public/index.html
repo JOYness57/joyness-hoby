@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>JOYNESSHOBY | Watchlist Tracker & TCG Vault</title>
+  <meta name="description" content="JOYNESSHOBY - Your all-in-one hobby hub for Anime, Movie & Series tracking, and TCG cards collection, hunting list & deck builder.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Remix Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Ambient glowing aura -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Mobile Drawer Overlay & Slide-out Menu -->
+  <div id="mobileNavOverlay" class="mobile-nav-overlay hidden" aria-hidden="true"></div>
+  <aside id="mobileNavDrawer" class="mobile-nav-drawer hidden" aria-label="Mobile Navigation">
+    <div class="mobile-drawer-header">
+      <div class="drawer-brand">
+        <div class="brand-icon small"><i class="ri-gamepad-fill"></i></div>
+        <div class="drawer-title">JOYNESS<span>HOBY</span></div>
+      </div>
+      <button type="button" id="btnCloseMobileDrawer" class="btn-close-drawer" aria-label="Close mobile navigation">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <!-- Mobile User Status Card -->
+    <div class="mobile-drawer-user-card" id="mobileDrawerUserCard">
+      <div id="mobileDrawerLoggedOutView" class="mobile-user-status">
+        <div class="mobile-user-icon"><i class="ri-user-smile-line"></i></div>
+        <div class="mobile-user-meta">
+          <div class="mobile-user-title">Guest Visitor</div>
+          <div class="mobile-user-subtitle">Sign in to save your personal collection</div>
+        </div>
+        <button type="button" id="btnMobileOpenAuth" class="btn btn-primary btn-sm btn-block mt-2">
+          <i class="ri-login-box-line"></i> Sign In / Register
+        </button>
+      </div>
+
+      <div id="mobileDrawerLoggedInView" class="mobile-user-status logged-in hidden">
+        <div class="mobile-user-badge" id="mobileDrawerAvatarBadge">U</div>
+        <div class="mobile-user-meta">
+          <div class="mobile-user-title" id="mobileDrawerUserName">My Account</div>
+          <div class="mobile-user-email" id="mobileDrawerUserEmail">user@example.com</div>
+          <span class="auth-provider-chip mt-1" id="mobileDrawerProviderChip">Active Session</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Module Switcher -->
+    <div class="drawer-section-title">Navigation Modules</div>
+    <div class="mobile-module-nav">
+      <button type="button" id="mobileModuleTabWatchlist" class="mobile-module-btn active">
+        <i class="ri-film-fill"></i>
+        <div class="btn-text">
+          <span class="main-txt">Watchlist Tracker</span>
+          <span class="sub-txt">Anime, Movie &amp; Series</span>
+        </div>
+      </button>
+      <button type="button" id="mobileModuleTabTcg" class="mobile-module-btn">
+        <i class="ri-vip-crown-fill"></i>
+        <div class="btn-text">
+          <span class="main-txt">TCG Vault</span>
+          <span class="sub-txt">Gundam, Cards &amp; Decks</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Mobile Quick Actions -->
+    <div class="drawer-section-title">Quick Actions</div>
+    <div class="mobile-drawer-actions-grid">
+      <button type="button" id="mobileBtnAddWatchlist" class="btn btn-primary btn-block">
+        <i class="ri-add-circle-fill"></i> Add Title
+      </button>
+      <button type="button" id="mobileBtnAddCard" class="btn btn-primary btn-block">
+        <i class="ri-vip-diamond-fill"></i> Add Card
+      </button>
+      <button type="button" id="mobileBtnAddDeck" class="btn btn-secondary btn-block">
+        <i class="ri-stack-fill"></i> New Deck
+      </button>
+      <button type="button" id="mobileBtnSyncPrices" class="btn btn-secondary btn-block">
+        <i class="ri-refresh-line"></i> Sync Market Prices
+      </button>
+    </div>
+
+    <!-- Mobile Account & Settings Tools -->
+    <div class="drawer-section-title">Tools &amp; Account</div>
+    <div class="mobile-drawer-settings-list">
+      <button type="button" id="mobileBtnExportCsv" class="drawer-link-item">
+        <i class="ri-file-download-line"></i> Export Watchlist CSV
+      </button>
+      <button type="button" id="mobileBtnCloneStarter" class="drawer-link-item">
+        <i class="ri-download-cloud-line"></i> Load Starter Cards &amp; Watchlist
+      </button>
+      <button type="button" id="mobileBtnFirebaseGuide" class="drawer-link-item">
+        <i class="ri-fire-fill" style="color: #f59e0b;"></i> Firebase Setup Guide
+      </button>
+      <button type="button" id="mobileBtnLogout" class="drawer-link-item text-danger hidden">
+        <i class="ri-logout-box-r-line"></i> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <div class="app-container">
+    
+    <!-- Top Navigation & Brand Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="ri-gamepad-fill"></i>
+        </div>
+        <div class="brand-info">
+          <h1>JOYNESS<span>HOBY</span></h1>
+          <p class="tagline">Hobby Hub • Watchlist Tracker &amp; TCG Vault</p>
+        </div>
+      </div>
+
+      <!-- MAIN MODULE TABS (Level 1) - Desktop View -->
+      <nav class="main-module-tabs desktop-module-tabs">
+        <button id="moduleTabWatchlist" class="module-tab active" data-module="watchlist">
+          <i class="ri-film-fill"></i>
+          <span>Watchlist Tracker</span>
+          <span class="module-pill">Anime / Movie / Series</span>
+        </button>
+        <button id="moduleTabTcg" class="module-tab" data-module="tcg">
+          <i class="ri-vip-crown-fill"></i>
+          <span>TCG Vault</span>
+          <span class="module-pill">Collection / Hunt / Decks</span>
+        </button>
+      </nav>
+
+      <!-- Global Actions & Account Menu -->
+      <div class="header-actions">
+        <!-- Watchlist Actions (visible in Watchlist module on desktop) -->
+        <div id="watchlistHeaderActions" class="actions-subgroup desktop-header-actions">
+          <button id="btnExport" class="btn btn-secondary" title="Export Watchlist to CSV">
+            <i class="ri-file-download-line"></i>
+            <span>Export CSV</span>
+          </button>
+          <label for="csvFileInput" class="btn btn-secondary" title="Import from CSV spreadsheet">
+            <i class="ri-file-upload-line"></i>
+            <span>Import CSV</span>
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+          </label>
+          <button id="btnOpenAddModal" class="btn btn-primary">
+            <i class="ri-add-circle-fill"></i>
+            <span>Add Title</span>
+          </button>
+        </div>
+
+        <!-- TCG Actions (visible in TCG module on desktop) -->
+        <div id="tcgHeaderActions" class="actions-subgroup desktop-header-actions hidden">
+          <button type="button" id="btnSyncMarketPrices" class="btn btn-secondary" title="Auto-sync and update market prices from Collectr and Yuyu-tei">
+            <i class="ri-refresh-line"></i>
+            <span>Sync Market Prices</span>
+          </button>
+          <button id="btnOpenAddDeckModal" class="btn btn-secondary">
+            <i class="ri-stack-fill"></i>
+            <span>New Deck</span>
+          </button>
+          <button id="btnOpenAddCardModal" class="btn btn-primary">
+            <i class="ri-add-circle-fill"></i>
+            <span>Add Card</span>
+          </button>
+        </div>
+
+        <!-- Main Account Menu (Login / Register / Profile Dropdown on Desktop) -->
+        <div class="user-account-container desktop-account-container" id="userAccountContainer">
+          <!-- State 1: Logged Out -->
+          <div id="authLoggedOutView" class="auth-btn-wrap">
+            <button type="button" id="btnOpenAuthModal" class="btn btn-primary btn-auth-trigger" title="Log In or Sign Up">
+              <i class="ri-user-smile-line"></i>
+              <span>Sign In / Register</span>
+            </button>
+          </div>
+
+          <!-- State 2: Logged In -->
+          <div id="authLoggedInView" class="auth-user-dropdown-wrap hidden">
+            <button type="button" id="btnUserDropdownToggle" class="user-profile-pill" aria-haspopup="true">
+              <div class="user-avatar-badge" id="userAvatarBadge">U</div>
+              <div class="user-pill-info">
+                <span class="user-pill-email" id="userPillEmail">user@example.com</span>
+                <span class="user-pill-status"><span class="user-status-dot"></span> Signed In</span>
+              </div>
+              <i class="ri-arrow-down-s-line dropdown-arrow"></i>
+            </button>
+
+            <!-- User Dropdown Menu -->
+            <div id="userAccountDropdown" class="user-dropdown-panel hidden">
+              <div class="dropdown-header">
+                <div class="dropdown-user-name" id="dropdownUserName">My Account</div>
+                <div class="dropdown-user-email" id="dropdownUserEmail">user@example.com</div>
+                <span class="auth-provider-chip" id="dropdownProviderChip"><i class="ri-shield-check-line"></i> Protected Session</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-nav-items">
+                <button type="button" class="dropdown-item" id="btnCloneStarterData"><i class="ri-download-cloud-line"></i> Load Starter Cards &amp; Watchlist</button>
+                <button type="button" class="dropdown-item" id="btnOpenFirebaseSetup"><i class="ri-fire-fill" style="color: #f59e0b;"></i> Firebase Setup Guide</button>
+              </div>
+              <div class="dropdown-divider"></div>
+              <button type="button" id="btnLogout" class="dropdown-item btn-logout"><i class="ri-logout-box-r-line"></i> Sign Out</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Hamburger Toggle Button (<768px) -->
+        <button type="button" id="btnMobileNavToggle" class="mobile-nav-toggle" aria-label="Open Mobile Menu" title="Menu">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         MODULE 1: WATCHLIST TRACKER (With Sub-Tabs: ALL, ANIME, MOVIE, SERIES, FAVORITES)
+         ==================================================================== -->
+    <main id="watchlistModule" class="module-view active">
+      
+      <!-- Watchlist Stats Grid -->
+      <section class="stats-grid">
+        <div class="stat-card" data-stat-filter="all">
+          <div class="stat-icon total"><i class="ri-database-2-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statTotal">0</span>
+            <span class="stat-label">Total Titles</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat-filter="watching">
+          <div class="stat-icon watching"><i class="ri-play-circle-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statWatching">0</span>
+            <span class="stat-label">Watching</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat-filter="marathon">
+          <div class="stat-icon marathon"><i class="ri-fire-fill"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statMarathon">0</span>
+            <span class="stat-label">Marathon</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat-filter="hold">
+          <div class="stat-icon hold"><i class="ri-pause-circle-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statHold">0</span>
+            <span class="stat-label">On Hold</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat-filter="drop">
+          <div class="stat-icon drop"><i class="ri-close-circle-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statDrop">0</span>
+            <span class="stat-label">Dropped</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat-filter="favorites">
+          <div class="stat-icon favorite"><i class="ri-star-fill"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statFavorites">0</span>
+            <span class="stat-label">Favorites</span>
+          </div>
+        </div>
+        <div class="stat-card highlight">
+          <div class="stat-icon episodes"><i class="ri-tv-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="statEpisodes">0</span>
+            <span class="stat-label">Episodes Watched</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Category SUB-TABS (ALL, ANIME, MOVIE, SERIES, FAVORITES) -->
+      <nav class="subtabs-bar">
+        <div class="subtabs-group" id="watchlistSubtabs">
+          <button class="subtab-btn active" data-category="all">
+            <i class="ri-apps-2-line"></i>
+            <span>ALL</span>
+            <span class="subtab-counter" id="countAll">0</span>
+          </button>
+          <button class="subtab-btn" data-category="anime">
+            <i class="ri-sparkling-fill"></i>
+            <span>ANIME</span>
+            <span class="subtab-counter" id="countAnime">0</span>
+          </button>
+          <button class="subtab-btn" data-category="movie">
+            <i class="ri-movie-2-line"></i>
+            <span>MOVIE</span>
+            <span class="subtab-counter" id="countMovie">0</span>
+          </button>
+          <button class="subtab-btn" data-category="series">
+            <i class="ri-tv-2-line"></i>
+            <span>SERIES</span>
+            <span class="subtab-counter" id="countSeries">0</span>
+          </button>
+          <button class="subtab-btn subtab-favorite" data-category="favorite">
+            <i class="ri-star-fill"></i>
+            <span>FAVORITES</span>
+            <span class="subtab-counter" id="countFavorite">0</span>
+          </button>
+        </div>
+
+        <!-- View Switcher -->
+        <div class="view-switcher">
+          <button id="btnViewTable" class="view-btn active" title="Spreadsheet Table View">
+            <i class="ri-table-line"></i>
+            <span>Table</span>
+          </button>
+          <button id="btnViewGrid" class="view-btn" title="Cards View">
+            <i class="ri-grid-fill"></i>
+            <span>Cards</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Controls: Search, Status Filter, Sort -->
+      <div class="controls-bar">
+        <div class="search-box">
+          <i class="ri-search-line search-icon"></i>
+          <input type="text" id="searchInput" placeholder="Search by name, streaming site, or notes..." autocomplete="off">
+          <button id="btnClearSearch" class="btn-clear hidden" title="Clear search">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+
+        <div class="filters-group">
+          <!-- Status Filter -->
+          <div class="filter-item">
+            <label for="statusFilter"><i class="ri-filter-3-line"></i> Status:</label>
+            <select id="statusFilter" class="custom-select">
+              <option value="all">All Statuses</option>
+              <option value="watching">🟢 Watching</option>
+              <option value="marathon">🔥 Marathon</option>
+              <option value="hold">⏸️ On Hold</option>
+              <option value="drop">🛑 Dropped</option>
+              <option value="completed">✅ Completed</option>
+            </select>
+          </div>
+
+          <!-- Sort Filter -->
+          <div class="filter-item">
+            <label for="sortBy"><i class="ri-sort-desc"></i> Sort:</label>
+            <select id="sortBy" class="custom-select">
+              <option value="id-asc">No (Oldest First)</option>
+              <option value="id-desc">No (Newest First)</option>
+              <option value="title-asc">Name (A-Z)</option>
+              <option value="title-desc">Name (Z-A)</option>
+              <option value="current_ep-desc">Episodes (Highest)</option>
+              <option value="rating-desc">Rating (Highest)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Context Subtitle & Status Legend -->
+      <div class="content-header">
+        <div class="content-title">
+          <h2 id="activeTabHeading">All Items</h2>
+          <span class="item-count-badge" id="visibleCountBadge">Showing 0 titles</span>
+        </div>
+        <div class="quick-status-legend">
+          <span class="legend-badge watching"><span class="dot"></span> Watching</span>
+          <span class="legend-badge marathon"><i class="ri-fire-fill"></i> Marathon</span>
+          <span class="legend-badge hold"><i class="ri-pause-line"></i> Hold</span>
+          <span class="legend-badge drop"><i class="ri-close-line"></i> Drop</span>
+        </div>
+      </div>
+
+      <!-- 1. Table View -->
+      <div id="tableViewWrapper" class="table-container">
+        <table class="watchlist-table" id="watchlistTable">
+          <thead>
+            <tr>
+              <th class="col-fav" title="Favorite"><i class="ri-star-line"></i></th>
+              <th class="col-no">No</th>
+              <th class="col-poster" style="width: 54px;">Poster</th>
+              <th class="col-name">Name</th>
+              <th class="col-category">Category</th>
+              <th class="col-episode">Episode</th>
+              <th class="col-website">Website</th>
+              <th class="col-status">Status</th>
+              <th class="col-rating">Rating</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Dynamic Rows rendered by JS -->
+          </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state hidden">
+          <div class="empty-icon"><i class="ri-folder-open-line"></i></div>
+          <h3>No titles found</h3>
+          <p>No matching anime, movies, or series found for this filter.</p>
+          <button id="btnEmptyAdd" class="btn btn-primary mt-3">
+            <i class="ri-add-line"></i> Add New Title
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Grid / Cards View -->
+      <div id="gridViewWrapper" class="cards-grid hidden">
+        <!-- Dynamic Cards rendered by JS -->
+      </div>
+    </main>
+
+    <!-- ====================================================================
+         MODULE 2: TCG VAULT (Deck Lists, Collection Cards & Hunting List)
+         ==================================================================== -->
+    <main id="tcgModule" class="module-view hidden">
+      
+      <!-- TCG Automated Market Sync Banner -->
+      <div class="tcg-market-sync-bar">
+        <div class="sync-bar-left">
+          <span class="live-pulse-dot"></span>
+          <span class="sync-title"><strong>Automated Market Sync Active:</strong> Real-time pricing &amp; portfolio tracking from <strong>Collectr</strong> (Global USD) &amp; <strong>Yuyu-tei</strong> (Japan JPY / Gundam). Card artwork auto-tallies with card names.</span>
+        </div>
+        <div class="sync-bar-right">
+          <span class="sync-time-badge" id="syncTimeBadge"><i class="ri-check-line"></i> Collectr &amp; Yuyu-tei Synced</span>
+          <button type="button" id="btnSyncMarketPricesBanner" class="btn-sm btn-primary">
+            <i class="ri-refresh-line"></i> Sync All Prices Now
+          </button>
+        </div>
+      </div>
+
+      <!-- TCG Stats Grid -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon total"><i class="ri-vip-diamond-fill"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="tcgStatCollection">0</span>
+            <span class="stat-label">Cards in Collection</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon marathon"><i class="ri-money-dollar-circle-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="tcgStatValue">$0</span>
+            <span class="stat-label">Est. Collection Value</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon drop"><i class="ri-crosshair-2-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="tcgStatHunting">0</span>
+            <span class="stat-label">Hunting / Want List</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon watching"><i class="ri-checkbox-circle-line"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="tcgStatFound">0</span>
+            <span class="stat-label">Cards Found</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon hold"><i class="ri-stack-fill"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="tcgStatDecks">0</span>
+            <span class="stat-label">Decks Built</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon favorite"><i class="ri-star-fill"></i></div>
+          <div class="stat-data">
+            <span class="stat-value" id="tcgStatFavorites">0</span>
+            <span class="stat-label">TCG Favorites</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TCG SUB-TABS (COLLECTION, HUNTING LIST, DECKS, FAVORITES) -->
+      <nav class="subtabs-bar">
+        <div class="subtabs-group" id="tcgSubtabs">
+          <button class="subtab-btn active" data-tcg-subtab="collection">
+            <i class="ri-folders-fill"></i>
+            <span>COLLECTION CARDS</span>
+            <span class="subtab-counter" id="tcgCountCollection">0</span>
+          </button>
+          <button class="subtab-btn" data-tcg-subtab="hunting">
+            <i class="ri-crosshair-2-fill"></i>
+            <span>HUNTING / CHASE LIST</span>
+            <span class="subtab-counter" id="tcgCountHunting">0</span>
+          </button>
+          <button class="subtab-btn" data-tcg-subtab="decks">
+            <i class="ri-stack-line"></i>
+            <span>DECKS</span>
+            <span class="subtab-counter" id="tcgCountDecks">0</span>
+          </button>
+          <button class="subtab-btn subtab-favorite" data-tcg-subtab="favorites">
+            <i class="ri-star-fill"></i>
+            <span>FAVORITES</span>
+            <span class="subtab-counter" id="tcgCountFavorites">0</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- TCG Controls Bar -->
+      <div class="controls-bar">
+        <div class="search-box">
+          <i class="ri-search-line search-icon"></i>
+          <input type="text" id="tcgSearchInput" placeholder="Search card by name, set, number, or notes..." autocomplete="off">
+          <button id="btnTcgClearSearch" class="btn-clear hidden" title="Clear search">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+
+        <div class="filters-group">
+          <!-- Game / TCG Filter (Includes GUNDAM!) -->
+          <div class="filter-item">
+            <label for="tcgGameFilter"><i class="ri-gamepad-line"></i> Game:</label>
+            <select id="tcgGameFilter" class="custom-select">
+              <option value="all">All Games</option>
+              <option value="Gundam">🤖 Gundam</option>
+              <option value="One Piece">🏴‍☠️ One Piece</option>
+              <option value="Pokemon">⚡ Pokémon</option>
+              <option value="Yu-Gi-Oh">🃏 Yu-Gi-Oh!</option>
+              <option value="MTG">🧙 Magic (MTG)</option>
+              <option value="Digimon">👾 Digimon</option>
+              <option value="Other">✨ Other</option>
+            </select>
+          </div>
+
+          <!-- Hunting Status Filter -->
+          <div class="filter-item" id="tcgStatusFilterWrapper">
+            <label for="tcgStatusFilter"><i class="ri-filter-3-line"></i> Status:</label>
+            <select id="tcgStatusFilter" class="custom-select">
+              <option value="all">All Statuses</option>
+              <option value="hunting">🔥 Hunting</option>
+              <option value="found">✅ Found</option>
+              <option value="ordered">📦 Ordered</option>
+              <option value="trading">🔄 Trading</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TCG Header Context -->
+      <div class="content-header">
+        <div class="content-title">
+          <h2 id="tcgSubtabHeading">Collection Cards</h2>
+          <span class="item-count-badge" id="tcgVisibleCountBadge">0 items</span>
+        </div>
+      </div>
+
+      <!-- TCG Content Panels -->
+      
+      <!-- Panel 1 & 2: Cards Table -->
+      <div id="tcgCardsViewWrapper" class="table-container">
+        <table class="watchlist-table" id="tcgCardsTable">
+          <thead>
+            <tr>
+              <th class="col-fav"><i class="ri-star-line"></i></th>
+              <th style="width: 50px;">No</th>
+              <th style="width: 54px;">Card</th>
+              <th style="min-width: 220px;">Card Name</th>
+              <th style="width: 120px;">Game</th>
+              <th style="min-width: 150px;">Set &amp; Number</th>
+              <th style="width: 120px;">Rarity</th>
+              <th id="thConditionOrPriority" style="width: 110px;">Condition</th>
+              <th id="thPriceOrValue" style="width: 120px;">Price / Value</th>
+              <th id="thCardStatus" style="width: 120px;">Status</th>
+              <th style="width: 110px; text-align: center;">Info Lookups</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tcgCardsTableBody">
+            <!-- Dynamic rows rendered by JS -->
+          </tbody>
+        </table>
+
+        <div id="tcgEmptyState" class="empty-state hidden">
+          <div class="empty-icon"><i class="ri-vip-diamond-line"></i></div>
+          <h3>No cards found</h3>
+          <p>Add cards to your collection or hunting list to start tracking.</p>
+          <button id="btnEmptyAddCard" class="btn btn-primary mt-3">
+            <i class="ri-add-line"></i> Add Card
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel 3: Decks Grid -->
+      <div id="tcgDecksViewWrapper" class="cards-grid hidden">
+        <!-- Dynamic Deck Cards rendered by JS -->
+      </div>
+
+    </main>
+
+  </div> <!-- End App Container -->
+
+  <!-- ====================================================================
+       MODALS
+       ==================================================================== -->
+
+  <!-- 1. ADD / EDIT WATCHLIST TITLE MODAL -->
+  <div id="itemModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle"><i class="ri-add-box-line"></i> Add to Watchlist</h3>
+        <button id="btnCloseModal" class="btn-close"><i class="ri-close-line"></i></button>
+      </div>
+
+      <form id="itemForm">
+        <input type="hidden" id="formItemId" value="">
+
+        <div class="form-group">
+          <label for="formTitle">Name / Title <span class="required">*</span></label>
+          <input type="text" id="formTitle" placeholder="e.g. Solo Leveling, Interstellar, Severance" required autocomplete="off">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formCategory">Category <span class="required">*</span></label>
+            <select id="formCategory" class="custom-select" required>
+              <option value="anime">Anime</option>
+              <option value="movie">Movie</option>
+              <option value="series">Series</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formStatus">Status <span class="required">*</span></label>
+            <select id="formStatus" class="custom-select" required>
+              <option value="watching">🟢 Watching</option>
+              <option value="marathon">🔥 Marathon</option>
+              <option value="hold">⏸️ Hold</option>
+              <option value="drop">🛑 Drop</option>
+              <option value="completed">✅ Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formCurrentEp">Current Episode</label>
+            <input type="number" id="formCurrentEp" min="0" value="1">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formTotalEp">Total Episodes <small>(0 if unknown)</small></label>
+            <input type="number" id="formTotalEp" min="0" value="12">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formRating">Rating (1-10)</label>
+            <input type="number" id="formRating" min="0" max="10" value="8">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="formWebsite">Website / Streaming Link</label>
+          <div class="input-with-quicklinks">
+            <input type="text" id="formWebsite" placeholder="e.g. https://crunchyroll.com or Netflix" autocomplete="off">
+            <div class="quick-preset-chips">
+              <span class="preset-chip" data-url="https://crunchyroll.com">Crunchyroll</span>
+              <span class="preset-chip" data-url="https://netflix.com">Netflix</span>
+              <span class="preset-chip" data-url="https://aniwatchtv.to">Aniwatch</span>
+              <span class="preset-chip" data-url="https://primevideo.com">Prime</span>
+              <span class="preset-chip" data-url="https://max.com">Max</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Poster Image Field (Auto-tallies with Title) -->
+        <div class="form-group">
+          <label><i class="ri-image-line"></i> Cover / Poster Artwork <span class="badge-auto-tally"><i class="ri-magic-line"></i> Auto-tallies with Title</span></label>
+          <div class="auto-image-tally-container">
+            <div class="image-tally-preview-wrap">
+              <img id="posterPreviewImg" src="/static/img/covers/frieren.jpg" alt="Preview" class="tally-card-art" style="height: 100px; width: 72px;">
+              <div class="image-tally-info">
+                <div class="image-tally-title" id="posterTallyTitle"><i class="ri-checkbox-circle-fill"></i> Cover auto-matched</div>
+                <div class="image-tally-sub" id="posterTallySub">Type or edit title above — cover tallies automatically.</div>
+                <button type="button" id="btnToggleCustomPoster" class="btn-xs-link text-dim mt-2">
+                  <i class="ri-edit-2-line"></i> Custom Poster URL override
+                </button>
+              </div>
+            </div>
+            <div id="customPosterWrap" class="custom-image-input-wrap hidden">
+              <input type="text" id="formImageUrl" placeholder="https://... or /static/img/covers/..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="formNotes">Notes / Review</label>
+          <textarea id="formNotes" rows="2" placeholder="e.g. Arc progress, recommendation notes..."></textarea>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="formIsFavorite">
+            <span class="custom-checkbox"></span>
+            <span class="checkbox-text"><i class="ri-star-fill gold-star"></i> Add to Favorites tab</span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btnCancelModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="btnSaveModal" class="btn btn-primary">
+            <i class="ri-save-line"></i> Save Title
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. ADD / EDIT TCG CARD MODAL -->
+  <div id="tcgCardModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="tcgCardModalTitle"><i class="ri-vip-diamond-line"></i> Add Card</h3>
+        <button id="btnTcgCloseCardModal" class="btn-close"><i class="ri-close-line"></i></button>
+      </div>
+
+      <form id="tcgCardForm">
+        <input type="hidden" id="formTcgCardId" value="">
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formTcgCardType">List Type <span class="required">*</span></label>
+            <select id="formTcgCardType" class="custom-select" required>
+              <option value="collection">🃏 In My Collection (Owned)</option>
+              <option value="hunting">🎯 Hunting / Want List (Chase)</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formTcgGame">Game / TCG <span class="required">*</span></label>
+            <select id="formTcgGame" class="custom-select" required>
+              <option value="Gundam">🤖 Gundam</option>
+              <option value="One Piece">🏴‍☠️ One Piece</option>
+              <option value="Pokemon">⚡ Pokémon</option>
+              <option value="Yu-Gi-Oh">🃏 Yu-Gi-Oh!</option>
+              <option value="MTG">🧙 Magic (MTG)</option>
+              <option value="Digimon">👾 Digimon</option>
+              <option value="Other">✨ Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="formTcgName">Card Name <span class="required">*</span></label>
+          <input type="text" id="formTcgName" placeholder="e.g. RX-78-2 Gundam, Monkey D. Luffy, Umbreon VMAX" required autocomplete="off">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formTcgSet">Set Name / Expansion</label>
+            <input type="text" id="formTcgSet" placeholder="e.g. Arsenal Base Season 1, OP-05, Evolving Skies">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formTcgNumber">Card Number</label>
+            <input type="text" id="formTcgNumber" placeholder="e.g. AB01-001, OP05-119, 215/203">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formTcgRarity">Rarity</label>
+            <input type="text" id="formTcgRarity" placeholder="e.g. Secret Rare, Manga Alt Art, SAR">
+          </div>
+
+          <div class="form-group flex-1" id="groupCondition">
+            <label for="formTcgCondition">Condition</label>
+            <select id="formTcgCondition" class="custom-select">
+              <option value="Gem Mint">Gem Mint 10</option>
+              <option value="NM" selected>Near Mint (NM)</option>
+              <option value="LP">Lightly Played (LP)</option>
+              <option value="MP">Moderately Played (MP)</option>
+              <option value="Graded">Graded (PSA/BGS/CGC)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px;">
+              <label for="formTcgPrice" id="lblPriceEst" style="margin-bottom: 0;">Est. Value ($ USD)</label>
+              <button type="button" id="btnAutoFetchCardData" class="btn-xs-link" title="Auto-fetch latest price from Collectr & Yuyu-tei">
+                <i class="ri-refresh-line"></i> Auto-Fetch
+              </button>
+            </div>
+            <input type="number" id="formTcgPrice" step="0.01" min="0" placeholder="e.g. 150.00">
+            <div class="price-hint-row">
+              <span class="market-source-chip" id="cardPriceSourceChip"><i class="ri-sparkling-fill"></i> Auto-priced from Collectr</span>
+              <span id="cardPriceJpyHint" class="price-jpy-hint"></span>
+            </div>
+          </div>
+
+          <div class="form-group flex-1" id="groupQuantity">
+            <label for="formTcgQty">Quantity</label>
+            <input type="number" id="formTcgQty" min="1" value="1">
+          </div>
+
+          <div class="form-group flex-1 hidden" id="groupPriority">
+            <label for="formTcgPriority">Hunt Priority</label>
+            <select id="formTcgPriority" class="custom-select">
+              <option value="grail">🔥 Holy Grail</option>
+              <option value="high">⭐ High Priority</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low Priority</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1 hidden" id="groupHuntStatus">
+            <label for="formTcgStatus">Hunt Status</label>
+            <select id="formTcgStatus" class="custom-select">
+              <option value="hunting">🔥 Actively Hunting</option>
+              <option value="found">✅ Found / Deal Made</option>
+              <option value="ordered">📦 Ordered / Shipped</option>
+              <option value="trading">🔄 Trading for it</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Card Artwork (Auto-tallies with Card Name) -->
+        <div class="form-group">
+          <label><i class="ri-image-line"></i> Card Artwork <span class="badge-auto-tally"><i class="ri-magic-line"></i> Auto-tallies with Card Name</span></label>
+          <div class="auto-image-tally-container">
+            <div class="image-tally-preview-wrap">
+              <img id="cardPreviewImg" src="/static/img/cards/umbreon_vmax.png" alt="Card Artwork" class="tally-card-art">
+              <div class="image-tally-info">
+                <div class="image-tally-title" id="imageTallyTitle"><i class="ri-checkbox-circle-fill"></i> Artwork auto-matched</div>
+                <div class="image-tally-sub" id="imageTallySub">Type or edit card name above — artwork tallies instantly.</div>
+                <button type="button" id="btnToggleCustomCardImage" class="btn-xs-link text-dim mt-2">
+                  <i class="ri-edit-2-line"></i> Custom Image URL override
+                </button>
+              </div>
+            </div>
+            <div id="customCardImageWrap" class="custom-image-input-wrap hidden">
+              <input type="text" id="formTcgImageUrl" placeholder="https://... or /static/img/cards/..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="formTcgNotes">Notes / Binder Location / Target details</label>
+          <textarea id="formTcgNotes" rows="2" placeholder="e.g. Magnetic case top shelf, PSA 10 target..."></textarea>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="formTcgIsFavorite">
+            <span class="custom-checkbox"></span>
+            <span class="checkbox-text"><i class="ri-star-fill gold-star"></i> Favorite Card</span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btnTcgCancelCardModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="btnTcgSaveCard" class="btn btn-primary">
+            <i class="ri-save-line"></i> Save Card
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. ADD / EDIT TCG DECK MODAL (WITH INTERACTIVE CARD LIST / TABLE BUILDER!) -->
+  <div id="tcgDeckModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-deck-builder">
+      <div class="modal-header">
+        <h3 id="tcgDeckModalTitle"><i class="ri-stack-fill"></i> Edit Deck</h3>
+        <button id="btnTcgCloseDeckModal" class="btn-close"><i class="ri-close-line"></i></button>
+      </div>
+
+      <form id="tcgDeckForm">
+        <input type="hidden" id="formTcgDeckId" value="">
+
+        <div class="form-group">
+          <label for="formDeckName">Deck Name <span class="required">*</span></label>
+          <input type="text" id="formDeckName" placeholder="e.g. Charizard ex / Pidgeot Engine" required autocomplete="off">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formDeckGame">Game <span class="required">*</span></label>
+            <select id="formDeckGame" class="custom-select" required>
+              <option value="Gundam">🤖 Gundam</option>
+              <option value="One Piece">🏴‍☠️ One Piece</option>
+              <option value="Pokemon">⚡ Pokémon</option>
+              <option value="Yu-Gi-Oh">🃏 Yu-Gi-Oh!</option>
+              <option value="MTG">🧙 Magic (MTG)</option>
+              <option value="Digimon">👾 Digimon</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formDeckStatus">Status <span class="required">*</span></label>
+            <select id="formDeckStatus" class="custom-select" required>
+              <option value="active">🟢 Active / Tournament Ready</option>
+              <option value="building">🛠️ In Progress / Building</option>
+              <option value="testing">🧪 Testing / Theorycraft</option>
+              <option value="retired">💤 Retired</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formDeckLeader">Leader / Commander / Ace Card</label>
+            <input type="text" id="formDeckLeader" placeholder="e.g. Charizard ex (OBF 125)">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formDeckFormat">Format</label>
+            <input type="text" id="formDeckFormat" value="Standard" placeholder="e.g. Standard, Modern">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formDeckCardCount">Total Target Cards</label>
+            <input type="number" id="formDeckCardCount" min="1" value="60">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="formDeckImageUrl">Deck / Leader Image URL</label>
+          <input type="text" id="formDeckImageUrl" placeholder="e.g. /static/img/cards/charizard_151.png">
+        </div>
+
+        <!-- ==========================================================
+             INTERACTIVE DECK CARDS LIST / TABLE BUILDER
+             ========================================================== -->
+        <div class="decklist-builder-section">
+          <div class="decklist-builder-header">
+            <div class="header-left">
+              <label><i class="ri-list-check-3"></i> Deck List / Core Cards</label>
+              <span class="deck-count-pill" id="deckBuilderCountPill">0 / 60 Cards</span>
+            </div>
+            <div class="header-actions-deck">
+              <button type="button" id="btnTogglePasteMode" class="btn-sm btn-secondary" title="Paste text list from Limitless TCG / simulator">
+                <i class="ri-clipboard-line"></i> Quick Paste Text
+              </button>
+              <button type="button" id="btnAddDeckCardRow" class="btn-sm btn-primary">
+                <i class="ri-add-line"></i> Add Card Row
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Paste Area (Collapsible) -->
+          <div id="deckQuickPasteBox" class="quick-paste-box hidden">
+            <p class="quick-paste-hint"><i class="ri-information-line"></i> Paste a deck list below (e.g. <code>4 Charizard ex</code>, <code>4x Rare Candy</code>). It will automatically convert into the table rows!</p>
+            <textarea id="deckPasteTextarea" rows="3" placeholder="4 Charizard ex&#10;4 Rare Candy&#10;4 Arven&#10;..."></textarea>
+            <div class="paste-actions">
+              <button type="button" id="btnApplyPaste" class="btn-sm btn-primary"><i class="ri-check-line"></i> Convert to Table</button>
+              <button type="button" id="btnCancelPaste" class="btn-sm btn-secondary">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Cards Table Editor -->
+          <div class="deck-cards-table-wrapper">
+            <table class="deck-builder-table" id="deckBuilderTable">
+              <thead>
+                <tr>
+                  <th style="width: 76px;">Qty</th>
+                  <th>Card Name</th>
+                  <th style="width: 140px;">Type / Role</th>
+                  <th style="width: 44px; text-align: center;">Del</th>
+                </tr>
+              </thead>
+              <tbody id="deckBuilderTableBody">
+                <!-- Dynamically populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="form-group mt-3">
+          <label for="formDeckNotes">Strategy Notes / Matchup Tips</label>
+          <textarea id="formDeckNotes" rows="2" placeholder="e.g. Mulligan for turn 2 Pidgeot, save Prime Catcher for game..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btnTcgCancelDeckModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="btnTcgSaveDeck" class="btn btn-primary">
+            <i class="ri-save-line"></i> Save Deck
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. DELETE CONFIRMATION MODAL -->
+  <div id="deleteModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-confirm">
+      <div class="confirm-icon"><i class="ri-error-warning-line"></i></div>
+      <h3>Delete Confirmation</h3>
+      <p>Are you sure you want to remove <strong id="deleteItemTitle">this item</strong>?</p>
+      <div class="modal-footer mt-4">
+        <button id="btnCancelDelete" class="btn btn-secondary">Cancel</button>
+        <button id="btnConfirmDelete" class="btn btn-danger">
+          <i class="ri-delete-bin-line"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. FIREBASE AUTH MODAL (LOGIN & SIGN UP) -->
+  <div id="authModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-auth">
+      <div class="modal-header">
+        <div class="auth-brand">
+          <i class="ri-sparkling-fill gold-star"></i>
+          <h3 id="authModalTitle">Welcome to JOYNESSHOBY</h3>
+        </div>
+        <button id="btnCloseAuthModal" class="btn-close"><i class="ri-close-line"></i></button>
+      </div>
+
+      <!-- Auth Mode Tabs -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tabAuthLogin">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="tabAuthRegister">Create Account</button>
+      </div>
+
+      <!-- Alerts -->
+      <div id="authErrorAlert" class="auth-alert error hidden">
+        <i class="ri-error-warning-line"></i>
+        <span id="authErrorMsg">Invalid email or password</span>
+      </div>
+      <div id="authSuccessAlert" class="auth-alert success hidden">
+        <i class="ri-checkbox-circle-line"></i>
+        <span id="authSuccessMsg">Account created successfully!</span>
+      </div>
+
+      <form id="authForm">
+        <!-- Display Name (Register only) -->
+        <div class="form-group hidden" id="groupDisplayName">
+          <label for="authDisplayName">Display Name / Nickname</label>
+          <div class="input-with-icon">
+            <i class="ri-user-smile-line input-icon"></i>
+            <input type="text" id="authDisplayName" placeholder="e.g. Master Collector" autocomplete="name">
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="authEmail">Email Address <span class="required">*</span></label>
+          <div class="input-with-icon">
+            <i class="ri-mail-line input-icon"></i>
+            <input type="email" id="authEmail" placeholder="yourname@gmail.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label for="authPassword">Password <span class="required">*</span></label>
+          <div class="input-with-icon">
+            <i class="ri-lock-line input-icon"></i>
+            <input type="password" id="authPassword" placeholder="Minimum 6 characters" required autocomplete="current-password">
+            <button type="button" class="btn-toggle-pw" id="btnTogglePassword" title="Show/Hide password">
+              <i class="ri-eye-line" id="iconEyePw"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirm Password (Register only) -->
+        <div class="form-group hidden" id="groupConfirmPassword">
+          <label for="authConfirmPassword">Confirm Password <span class="required">*</span></label>
+          <div class="input-with-icon">
+            <i class="ri-lock-check-line input-icon"></i>
+            <input type="password" id="authConfirmPassword" placeholder="Re-enter password" autocomplete="new-password">
+          </div>
+        </div>
+
+        <!-- Remember Me Checkbox -->
+        <div class="form-group checkbox-group" style="margin-bottom: 20px;">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="authRememberMe" checked>
+            <span class="custom-checkbox"></span>
+            <span class="checkbox-text">Keep me signed in across sessions</span>
+          </label>
+        </div>
+
+        <button type="submit" id="btnAuthSubmit" class="btn btn-primary btn-block btn-lg">
+          <i class="ri-login-box-line"></i> <span id="authSubmitText">Sign In to My Vault</span>
+        </button>
+
+        <div class="auth-divider">
+          <span>or sign in with</span>
+        </div>
+
+        <!-- Google & Demo Quick Actions -->
+        <div class="auth-social-actions">
+          <button type="button" id="btnAuthGoogle" class="btn btn-secondary btn-social">
+            <i class="ri-google-fill" style="color: #ea4335;"></i>
+            <span>Google Account</span>
+          </button>
+          <button type="button" id="btnAuthDemoGuest" class="btn btn-secondary btn-social" title="Instant 1-Click Guest Session">
+            <i class="ri-flashlight-line" style="color: #fbbf24;"></i>
+            <span>Quick Demo Guest</span>
+          </button>
+        </div>
+
+        <div class="auth-footer-help">
+          <button type="button" id="btnOpenFirebaseGuideFromAuth" class="btn-link-help">
+            <i class="ri-fire-fill" style="color: #f59e0b;"></i> How to configure Firebase project keys?
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. FIREBASE SETUP INSTRUCTIONS MODAL -->
+  <div id="firebaseGuideModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-firebase-guide">
+      <div class="modal-header">
+        <h3><i class="ri-fire-fill" style="color: #f59e0b;"></i> Firebase Authentication Setup Guide</h3>
+        <button id="btnCloseFirebaseGuideModal" class="btn-close"><i class="ri-close-line"></i></button>
+      </div>
+      
+      <div class="guide-content">
+        <p class="guide-intro">
+          Follow these 5 simple steps to connect your free Google Firebase project so users worldwide can sign up and log in:
+        </p>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 1</div>
+          <div class="step-details">
+            <h4>Open the Free Firebase Console</h4>
+            <p>Visit <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" class="link-ext">https://console.firebase.google.com/ <i class="ri-external-link-line"></i></a> and sign in with your Google account.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 2</div>
+          <div class="step-details">
+            <h4>Create a New Project</h4>
+            <p>Click <strong>"Add project"</strong>, name it <code>JoynessHobby</code>, choose default settings, and click <strong>"Create project"</strong>.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 3</div>
+          <div class="step-details">
+            <h4>Enable Email/Password Authentication</h4>
+            <p>In the left menu, click <strong>"Build"</strong> &rarr; <strong>"Authentication"</strong> &rarr; click <strong>"Get started"</strong>.</p>
+            <p>Under <strong>Sign-in method</strong>, enable <strong>Email/Password</strong> and click <strong>Save</strong> (and enable <strong>Google</strong> if desired).</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 4</div>
+          <div class="step-details">
+            <h4>Register Web App &amp; Copy Keys</h4>
+            <p>Click the <strong>Settings Gear ⚙️</strong> &rarr; <strong>Project settings</strong> &rarr; scroll down to <strong>"Your apps"</strong> &rarr; click the Web icon <code>&lt;/&gt;</code>.</p>
+            <p>Enter nickname "Joyness Web", click <strong>Register app</strong>, and copy your <code>firebaseConfig</code> keys.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 5</div>
+          <div class="step-details">
+            <h4>Paste Keys into <code>static/js/firebase-config.js</code></h4>
+            <p>Open the file <code class="code-filepath">static/js/firebase-config.js</code> in this project and paste your keys into <code>firebaseConfig</code>:</p>
+            <pre class="code-snippet"><code>const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "joynesshobby.firebaseapp.com",
+  projectId: "joynesshobby",
+  storageBucket: "joynesshobby.appspot.com",
+  messagingSenderId: "123456789...",
+  appId: "1:123456789:web:..."
+};</code></pre>
+          </div>
+        </div>
+
+        <div class="guide-status-box" id="guideFirebaseStatusBox">
+          <div class="status-indicator">
+            <span class="pulse-dot" id="firebaseLiveDot"></span>
+            <strong id="firebaseLiveStatusText">Firebase Project: joyness-hoby</strong>
+          </div>
+          <p id="firebaseLiveStatusDesc">Configured for project <code>joyness-hoby</code> (App ID: <code>1:542346124070:web:1e6a25629608900e66ffe7</code>). Provide your Web API Key below or in <code>static/js/firebase-config.js</code> to activate live Cloud Firebase &amp; Firestore.</p>
+        </div>
+
+        <!-- In-App Quick API Key Activation -->
+        <div class="api-key-activation-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-weight: 700; font-size: 14px; color: #f8fafc;"><i class="ri-key-2-fill" style="color: #f59e0b;"></i> Enter Firebase Web API Key</span>
+            <span id="apiKeyStatusBadge" class="auth-provider-chip" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">Key Required</span>
+          </div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+            Paste your Firebase Web API Key (starts with <code>AIzaSy...</code>) to instantly connect Firebase Auth and Cloud Firestore:
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="inputFirebaseApiKey" class="form-input" placeholder="AIzaSy..." style="flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px;" autocomplete="off">
+            <button type="button" id="btnSaveFirebaseApiKey" class="btn btn-primary" style="white-space: nowrap;">
+              <i class="ri-checkbox-circle-line"></i> Connect &amp; Save
+            </button>
+          </div>
+          <div id="apiKeyFeedbackMsg" style="font-size: 12px; margin-top: 8px; display: none;"></div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 1</div>
+          <div class="step-details">
+            <h4>Open Project Settings in Firebase Console</h4>
+            <p>Go directly to your project settings: <a href="https://console.firebase.google.com/project/joyness-hoby/settings/general" target="_blank" rel="noopener noreferrer" class="link-ext">https://console.firebase.google.com/project/joyness-hoby/settings/general <i class="ri-external-link-line"></i></a></p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 2</div>
+          <div class="step-details">
+            <h4>Copy your Web API Key</h4>
+            <p>Under the <strong>General</strong> tab, look at <strong>Web API Key</strong> (starts with <code>AIzaSy...</code>), or scroll to <strong>"Your apps"</strong> &rarr; find Web App <code>1:542346124070:web:1e6a25629608900e66ffe7</code> and copy the <code>apiKey</code>.</p>
+            <p>Paste it in the box above or into <code class="code-filepath">static/js/firebase-config.js</code>.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 3</div>
+          <div class="step-details">
+            <h4>Enable Email/Password &amp; Google Sign-in</h4>
+            <p>In the Firebase Console left menu, go to <strong>Build &rarr; Authentication &rarr; Sign-in method</strong>:</p>
+            <p>&bull; Enable <strong>Email/Password</strong> and click Save.</p>
+            <p>&bull; Enable <strong>Google</strong> (select your support email) and click Save.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">Step 4</div>
+          <div class="step-details">
+            <h4>Create Cloud Firestore Database</h4>
+            <p>In the left menu, go to <strong>Build &rarr; Firestore Database</strong> &rarr; click <strong>"Create database"</strong>.</p>
+            <p>Choose your nearest location (e.g. <code>asia-southeast1</code> or <code>nam5</code>) and start in production/test mode. Your database collections (<code>users/{uid}/watchlist</code>, <code>users/{uid}/tcg_cards</code>, <code>users/{uid}/tcg_decks</code>) will synchronize automatically!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="btnCloseFirebaseGuideBtn" class="btn btn-primary">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Firebase SDK (v10 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase Auth Configuration -->
+  <script src="/static/js/firebase-config.js"></script>
+  <!-- Main Application Script -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

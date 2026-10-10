@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+ENV/
+
+# Local SQLite databases & temporary files
+watchlist.db
+*.db
+scratch/
+
+# Agent & AI artifacts
+.agents/
+
+# Logs & temp files
+*.log
+.DS_Store
+Thumbs.db
+
+# Node / NPM (if any)
+node_modules/
+.npm/
+
+# Firebase cache
+.firebase/
